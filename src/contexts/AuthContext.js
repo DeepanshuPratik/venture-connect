@@ -22,11 +22,10 @@ export function AuthContextProvider({ children }) {
       name: userName,
       role: role,
       bio: '',
-      previousTrack: [],
-      skills: [],
-      startupVision: '',
+      workExperiences: [], 
+      skills: [], // Talent specific
+      startupVision: '', // Entrepreneur specific
       startupStage: 'Ideation / Discovery', // Default stage
-      startupType: role === 'entrepreneur' ? '' : undefined, // Initialize startupType for entrepreneurs
       createdAt: new Date(),
     });
     return userCredential;

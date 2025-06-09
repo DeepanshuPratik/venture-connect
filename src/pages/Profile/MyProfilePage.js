@@ -1,19 +1,57 @@
 import React from 'react';
-import { Link as ReactRouterLink } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import LoadingSpinner from '../../components/LoadingSpinner';
+
+// Import Chakra UI components
 import {
   Box,
-  Heading,
   Text,
-  Button,
-  Grid,
   VStack,
-  HStack,
   Flex,
+  Heading,
+  Divider,
   Tag,
-  Link
+  TagLabel,
+  Button,
+  Link as ChakraLink // Alias Link to avoid conflict with React Router Link
 } from '@chakra-ui/react';
+
+// Helper to format dates for display and calculation
+const formatDate = (dateString) => {
+  if (!dateString) return 'Present';
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
+};
+
+const calculateDuration = (startDate, endDate, isCurrent) => {
+  if (!startDate) return '';
+
+  const start = new Date(startDate);
+  const end = isCurrent ? new Date() : new Date(endDate);
+
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+    return ''; // Invalid date
+  }
+
+  let years = end.getFullYear() - start.getFullYear();
+  let months = end.getMonth() - start.getMonth();
+
+  if (months < 0 || (months === 0 && end.getDate() < start.getDate())) {
+    years--;
+    months += 12;
+  }
+
+  if (years > 0 && months > 0) {
+    return `(${years} year${years > 1 ? 's' : ''}, ${months} month${months > 1 ? 's' : ''})`;
+  } else if (years > 0) {
+    return `(${years} year${years > 1 ? 's' : ''})`;
+  } else if (months > 0) {
+    return `(${months} month${months > 1 ? 's' : ''})`;
+  } else {
+    return '(Less than a month)';
+  }
+};
 
 function MyProfilePage() {
   const { userProfile, loading } = useAuth();
@@ -22,73 +60,86 @@ function MyProfilePage() {
     return <LoadingSpinner />;
   }
 
-  return (
-    <Box maxW="container.xl" mx="auto" p={6} bg="white" rounded="lg" shadow="md">
-      <Heading as="h1" size="xl" color="gray.800" mb={6}>My Profile</Heading>
+  // Sort experiences by start date (most recent first) for display
+  const sortedWorkExperiences = [...(userProfile.workExperiences || [])].sort((a, b) => {
+    const dateA = a.startDate ? a.startDate.toDate() : new Date(0);
+    const dateB = b.startDate ? b.startDate.toDate() : new Date(0);
+    return dateB.getTime() - dateA.getTime();
+  });
 
-      <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)' }} gap={8}>
+
+  return (
+    <Box maxW="3xl" mx="auto" p={6} bg="white" rounded="lg" shadow="md">
+      <Flex justify="space-between" align="center" mb={6}>
+        <Text fontSize="4xl" fontWeight="bold" color="gray.800">My Profile</Text>
+        <ChakraLink as={Link} to="/profile/edit">
+          <Button colorScheme="blue">Edit Profile</Button>
+        </ChakraLink>
+      </Flex>
+
+      <VStack spacing={6} align="stretch">
         {/* Basic Info */}
-        <VStack align="flex-start" spacing={3}>
-          <Heading as="h2" size="md" color="gray.700">Basic Information</Heading>
-          <Text><Text as="strong" color="gray.800">Name:</Text> {userProfile.name}</Text>
-          <Text><Text as="strong" color="gray.800">Email:</Text> {userProfile.email}</Text>
-          <Text><Text as="strong" color="gray.800">Role:</Text> <Tag colorScheme={userProfile.role === 'entrepreneur' ? 'purple' : 'blue'} textTransform="capitalize">{userProfile.role}</Tag></Text>
-          <Text><Text as="strong" color="gray.800">Bio:</Text> {userProfile.bio || 'Not provided'}</Text>
-          <Text><Text as="strong" color="gray.800">Previous Track:</Text> {userProfile.previousTrack && userProfile.previousTrack.length > 0 ? userProfile.previousTrack.join(', ') : 'Not provided'}</Text>
-        </VStack>
+        <Box>
+          <Heading size="md" mb={3}>Basic Information</Heading>
+          <Text mb={1}><Text as="strong" color="gray.800">Name:</Text> {userProfile.name}</Text>
+          <Text mb={1}><Text as="strong" color="gray.800">Email:</Text> {userProfile.email}</Text>
+          <Text mb={1}><Text as="strong" color="gray.800">Role:</Text> <Text as="span" textTransform="capitalize">{userProfile.role}</Text></Text>
+          <Text mb={1}><Text as="strong" color="gray.800">Bio:</Text> {userProfile.bio || 'Not provided'}</Text>
+        </Box>
+        <Divider />
+
+        {/* --- Work History Section --- */}
+        <Box>
+          <Heading size="md" mb={3}>Work History / Startup Experience</Heading>
+          {sortedWorkExperiences.length === 0 ? (
+            <Text color="gray.500">No work experiences added yet.</Text>
+          ) : (
+            <VStack spacing={4} align="stretch">
+              {sortedWorkExperiences.map((exp) => (
+                <Box key={exp.id} p={4} borderWidth="1px" borderRadius="lg" shadow="sm">
+                  <Text fontSize="lg" fontWeight="semibold" mb={1}>{exp.jobTitle}</Text>
+                  <Text fontSize="md" color="gray.600" mb={1}>{exp.companyName}</Text>
+                  <Text fontSize="sm" color="gray.500">
+                    {formatDate(exp.startDate?.toDate ? exp.startDate.toDate() : exp.startDate)} - {formatDate(exp.endDate?.toDate ? exp.endDate.toDate() : exp.endDate) || (exp.isCurrent ? 'Present' : '')} {calculateDuration(exp.startDate?.toDate ? exp.startDate.toDate() : exp.startDate, exp.endDate?.toDate ? exp.endDate.toDate() : exp.endDate, exp.isCurrent)}
+                  </Text>
+                  {exp.description && (
+                    <Text mt={2} fontSize="sm">{exp.description}</Text>
+                  )}
+                </Box>
+              ))}
+            </VStack>
+          )}
+        </Box>
+        <Divider />
 
         {/* Role-specific info */}
         {userProfile.role === 'entrepreneur' && (
-          <VStack align="flex-start" spacing={3}>
-            <Heading as="h2" size="md" color="gray.700">Startup Details</Heading>
-            <Text><Text as="strong" color="gray.800">Startup Vision:</Text> {userProfile.startupVision || 'Not provided'}</Text>
-            <Text><Text as="strong" color="gray.800">Startup Stage:</Text> <Tag colorScheme="teal">{userProfile.startupStage || 'Not set'}</Tag></Text>
-            {userProfile.startupType && ( // Display startupType if it exists
-                <Text><Text as="strong" color="gray.800">Startup Type:</Text> <Tag colorScheme="orange">{userProfile.startupType}</Tag></Text>
-            )}
-          </VStack>
+          <Box>
+            <Heading size="md" mb={3}>Startup Details</Heading>
+            <Text mb={1}><Text as="strong" color="gray.800">Startup Vision:</Text> {userProfile.startupVision || 'Not provided'}</Text>
+            <Text mb={1}><Text as="strong" color="gray.800">Startup Stage:</Text> {userProfile.startupStage || 'Not set'}</Text>
+          </Box>
         )}
-
         {userProfile.role === 'talent' && (
-          <VStack align="flex-start" spacing={3}>
-            <Heading as="h2" size="md" color="gray.700">Skills & Portfolio</Heading>
-            <Text><Text as="strong" color="gray.800">Skills:</Text></Text>
-            <HStack flexWrap="wrap">
-              {userProfile.skills && userProfile.skills.length > 0 ? userProfile.skills.map((skill, i) => (
-                <Tag key={i} colorScheme="cyan">{skill}</Tag>
-              )) : <Text>Not provided</Text>}
-            </HStack>
-            <Text>
-                <Text as="strong" color="gray.800">Portfolio Link:</Text>{' '}
-                {userProfile.portfolioLink ? (
-                    <Link href={userProfile.portfolioLink} isExternal color="blue.500">
-                        {userProfile.portfolioLink}
-                    </Link>
-                ) : (
-                    'Not provided'
-                )}
-            </Text>
-            <Text>
-                <Text as="strong" color="gray.800">Resume Link:</Text>{' '}
-                {userProfile.resumeLink ? (
-                    <Link href={userProfile.resumeLink} isExternal color="blue.500">
-                        {userProfile.resumeLink}
-                    </Link>
-                ) : (
-                    'Not provided'
-                )}
-            </Text>
-          </VStack>
-        )}
-      </Grid>
+          <Box>
+            <Heading size="md" mb={3}>Skills & Portfolio</Heading>
+            {userProfile.skills && userProfile.skills.length > 0 ? (
+              <Flex wrap="wrap" gap={2} mb={2}>
+                {userProfile.skills.map((skill, i) => (
+                  <Tag key={i} size="md" variant="solid" colorScheme="green">
+                    <TagLabel>{skill}</TagLabel>
+                  </Tag>
+                ))}
+              </Flex>
+            ) : (
+              <Text color="gray.500" mb={2}>No skills provided.</Text>
+            )}
 
-      <Flex justify="flex-end" mt={8}>
-        <Link as={ReactRouterLink} to="/profile/edit" _hover={{ textDecoration: 'none' }}>
-          <Button colorScheme="blue" size="md" borderRadius="full">
-            Edit Profile
-          </Button>
-        </Link>
-      </Flex>
+            <Text mb={1}><Text as="strong" color="gray.800">Portfolio Link:</Text> {userProfile.portfolioLink ? <ChakraLink href={userProfile.portfolioLink} isExternal color="blue.500">{userProfile.portfolioLink}</ChakraLink> : 'Not provided'}</Text>
+            <Text mb={1}><Text as="strong" color="gray.800">Resume Link:</Text> {userProfile.resumeLink ? <ChakraLink href={userProfile.resumeLink} isExternal color="blue.500">{userProfile.resumeLink}</ChakraLink> : 'Not provided'}</Text>
+          </Box>
+        )}
+      </VStack>
     </Box>
   );
 }
