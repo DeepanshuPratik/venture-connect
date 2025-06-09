@@ -1,17 +1,22 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import './index.css';
 import App from './App';
-import reportWebVitals from './reportWebVitals';
+// Remove or comment out this line: import './styles/tailwind.css';
+// import './styles/tailwind.css'; // Removed or commented
 
+// Import ChakraProvider
+import { ChakraProvider, extendTheme } from '@chakra-ui/react';
+// Import your Auth Context (keep this)
+import { AuthContextProvider } from './contexts/AuthContext';
+const theme = extendTheme({});
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
-    <App />
+    {/* Wrap your app with ChakraProvider */}
+    <ChakraProvider>
+      <AuthContextProvider>
+        <App />
+      </AuthContextProvider>
+    </ChakraProvider>
   </React.StrictMode>
 );
-
-// If you want to start measuring performance in your app, pass a function
-// to log results (for example: reportWebVitals(console.log))
-// or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals
-reportWebVitals();

@@ -1,9 +1,7 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
-# dependencies
+## dependencies
 /node_modules
 /.pnp
-.pnp.js
+.pnp-debug.log
 
 # testing
 /coverage
@@ -21,3 +19,7 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+.history
+
+# firebase
+.env # Add this line to prevent .env from being committed 
