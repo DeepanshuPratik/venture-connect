@@ -6,7 +6,7 @@ import Footer from './components/Footer';
 import LoadingSpinner from './components/LoadingSpinner';
 
 // Import Chakra UI components for layout
-import { Flex, Box, Container } from '@chakra-ui/react'; // <--- ADD Flex, Box, Container
+import { Flex, Box } from '@chakra-ui/react';
 
 // Pages
 import LoginPage from './pages/Auth/LoginPage';
@@ -26,6 +26,9 @@ import CommunityPage from './pages/Community/CommunityPage';
 import EntrepreneurSearchPage from './pages/Community/EntrepreneurSearchPage';
 import CommunityFeedPage from './pages/Community/CommunityFeedPage';
 
+// NEW: Public Profile Page
+import PublicProfilePage from './pages/Profile/PublicProfilePage'; // <--- NEW IMPORT
+
 
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -41,7 +44,6 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 
   // Optional: Role-based protection
   if (allowedRoles && userProfile && !allowedRoles.includes(userProfile.role)) {
-    // If not allowed, redirect to dashboard or a permission denied page
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -53,7 +55,6 @@ function App() {
 
   if (loading) {
     return (
-      // Centralize loading spinner when the whole app is loading
       <Flex minH="100vh" align="center" justify="center" bg="gray.100">
         <LoadingSpinner />
       </Flex>
@@ -62,12 +63,10 @@ function App() {
 
   return (
     <Router>
-      {/* Outer Flex container to make the footer sticky */}
-      <Flex direction="column" minH="100vh"> {/* Use Flex, direction="column", minH="100vh" */}
+      <Flex direction="column" minH="100vh">
         <Navbar />
 
-        {/* Main content area - takes up available space */}
-        <Box as="main" flexGrow={1} maxW="container.xl" mx="auto" p={4} w="full"> {/* Use Box as "main", flexGrow={1} */}
+        <Box as="main" flexGrow={1} maxW="container.xl" mx="auto" p={4} w="full">
           <Routes>
             {/* Public Routes */}
             <Route path="/login" element={<LoginPage />} />
@@ -92,6 +91,9 @@ function App() {
             <Route path="/community/entrepreneurs" element={<ProtectedRoute><EntrepreneurSearchPage /></ProtectedRoute>} />
             <Route path="/community/feed" element={<ProtectedRoute><CommunityFeedPage /></ProtectedRoute>} />
 
+            {/* NEW: Public Profile Route - accessible by anyone logged in */}
+            <Route path="/profile/:userId" element={<ProtectedRoute><PublicProfilePage /></ProtectedRoute>} /> {/* <--- NEW ROUTE */}
+
 
             {/* Home/Default Route */}
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -99,10 +101,10 @@ function App() {
             {/* Catch-all for 404 */}
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
-        </Box> {/* End of main content Box */}
+        </Box>
 
         <Footer />
-      </Flex> {/* End of Flex container */}
+      </Flex>
     </Router>
   );
 }

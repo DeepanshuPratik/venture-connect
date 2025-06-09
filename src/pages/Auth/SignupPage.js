@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link as ReactRouterLink, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuth } from '../../hooks/useAuth'; // Correct relative path
 import {
   Box,
   Heading,
@@ -9,7 +9,6 @@ import {
   FormControl,
   FormLabel,
   Text,
-  Flex,
   Alert,
   AlertIcon,
   VStack,
@@ -17,6 +16,7 @@ import {
   Stack,
   Radio,
   Link,
+  Flex, // Ensure Flex is imported for the outer container
   useToast
 } from '@chakra-ui/react';
 

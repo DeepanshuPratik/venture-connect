@@ -1,112 +1,104 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { useAuth } from './hooks/useAuth';
-import Navbar from './components/Navbar';
-import Footer from './components/Footer';
-import LoadingSpinner from './components/LoadingSpinner';
+import React, { useState } from 'react';
+import { Link as ReactRouterLink, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../hooks/useAuth'; // Correct relative path
+import {
+  Box,
+  Heading,
+  Input,
+  Button,
+  FormControl,
+  FormLabel,
+  Text,
+  Alert,
+  AlertIcon,
+  VStack,
+  Link,
+  Flex, // Ensure Flex is imported for the outer container
+  useToast // Chakra's toast for better notifications
+} from '@chakra-ui/react';
 
-// Import Chakra UI components for layout
-import { Flex, Box } from '@chakra-ui/react';
+function LoginPage() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const { login } = useAuth();
+  const navigate = useNavigate();
+  const toast = useToast();
 
-// Pages
-import LoginPage from './pages/Auth/LoginPage';
-import SignupPage from './pages/Auth/SignupPage';
-import DashboardPage from './pages/Dashboard/DashboardPage';
-import MyProfilePage from './pages/Profile/MyProfilePage';
-import EditProfilePage from './pages/Profile/EditProfilePage';
-import JobPostingsListPage from './pages/JobPostings/JobPostingsListPage';
-import CreateJobPostingPage from './pages/JobPostings/CreateJobPostingPage';
-import JobPostingDetailPage from './pages/JobPostings/JobPostingDetailPage';
-import AchievementsListPage from './pages/Achievements/AchievementsListPage';
-import CreateAchievementPage from './pages/Achievements/CreateAchievementPage';
-import NotFoundPage from './pages/NotFoundPage';
-
-// New Community Pages
-import CommunityPage from './pages/Community/CommunityPage';
-import EntrepreneurSearchPage from './pages/Community/EntrepreneurSearchPage';
-import CommunityFeedPage from './pages/Community/CommunityFeedPage';
-
-// NEW: Public Profile Page
-import PublicProfilePage from './pages/Profile/PublicProfilePage'; // <--- NEW IMPORT
-
-
-// Protected Route Component
-const ProtectedRoute = ({ children, allowedRoles }) => {
-  const { currentUser, loading, userProfile } = useAuth();
-
-  if (loading) {
-    return <LoadingSpinner />;
-  }
-
-  if (!currentUser) {
-    return <Navigate to="/login" replace />;
-  }
-
-  // Optional: Role-based protection
-  if (allowedRoles && userProfile && !allowedRoles.includes(userProfile.role)) {
-    return <Navigate to="/dashboard" replace />;
-  }
-
-  return children;
-};
-
-function App() {
-  const { loading } = useAuth();
-
-  if (loading) {
-    return (
-      <Flex minH="100vh" align="center" justify="center" bg="gray.100">
-        <LoadingSpinner />
-      </Flex>
-    );
-  }
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      await login(email, password);
+      toast({
+        title: "Logged in successfully!",
+        status: "success",
+        duration: 3000,
+        isClosable: true,
+      });
+      navigate('/dashboard');
+    } catch (err) {
+      setError('Failed to log in. Please check your credentials.');
+      console.error(err);
+    }
+    setLoading(false);
+  };
 
   return (
-    <Router>
-      <Flex direction="column" minH="100vh">
-        <Navbar />
-
-        <Box as="main" flexGrow={1} maxW="container.xl" mx="auto" p={4} w="full">
-          <Routes>
-            {/* Public Routes */}
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/signup" element={<SignupPage />} />
-
-            {/* Protected Routes */}
-            <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
-            <Route path="/profile" element={<ProtectedRoute><MyProfilePage /></ProtectedRoute>} />
-            <Route path="/profile/edit" element={<ProtectedRoute><EditProfilePage /></ProtectedRoute>} />
-
-            {/* Job Postings */}
-            <Route path="/jobs" element={<ProtectedRoute><JobPostingsListPage /></ProtectedRoute>} />
-            <Route path="/jobs/new" element={<ProtectedRoute allowedRoles={['entrepreneur']}><CreateJobPostingPage /></ProtectedRoute>} />
-            <Route path="/jobs/:id" element={<ProtectedRoute><JobPostingDetailPage /></ProtectedRoute>} />
-
-            {/* Achievements */}
-            <Route path="/achievements" element={<ProtectedRoute><AchievementsListPage /></ProtectedRoute>} />
-            <Route path="/achievements/new" element={<ProtectedRoute allowedRoles={['entrepreneur']}><CreateAchievementPage /></ProtectedRoute>} />
-
-            {/* Community Section */}
-            <Route path="/community" element={<ProtectedRoute><CommunityPage /></ProtectedRoute>} />
-            <Route path="/community/entrepreneurs" element={<ProtectedRoute><EntrepreneurSearchPage /></ProtectedRoute>} />
-            <Route path="/community/feed" element={<ProtectedRoute><CommunityFeedPage /></ProtectedRoute>} />
-
-            {/* NEW: Public Profile Route - accessible by anyone logged in */}
-            <Route path="/profile/:userId" element={<ProtectedRoute><PublicProfilePage /></ProtectedRoute>} /> {/* <--- NEW ROUTE */}
-
-
-            {/* Home/Default Route */}
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-
-            {/* Catch-all for 404 */}
-            <Route path="*" element={<NotFoundPage />} />
-          </Routes>
-        </Box>
-
-        <Footer />
-      </Flex>
-    </Router>
+    <Flex align="center" justify="center" minH="calc(100vh - 160px)" bg="gray.100">
+      <Box bg="white" p={8} rounded="lg" shadow="md" w="full" maxW="md">
+        <Heading as="h2" size="xl" textAlign="center" color="gray.800" mb={6}>
+          Login
+        </Heading>
+        {error && (
+          <Alert status="error" mb={4} borderRadius="md">
+            <AlertIcon />
+            <Text>{error}</Text>
+          </Alert>
+        )}
+        <VStack as="form" spacing={4} onSubmit={handleSubmit}>
+          <FormControl id="email" isRequired>
+            <FormLabel>Email</FormLabel>
+            <Input
+              type="email"
+              placeholder="Enter your email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </FormControl>
+          <FormControl id="password" isRequired>
+            <FormLabel>Password</FormLabel>
+            <Input
+              type="password"
+              placeholder="Enter your password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </FormControl>
+          <Button
+            type="submit"
+            colorScheme="blue"
+            size="lg"
+            width="full"
+            isLoading={loading}
+            loadingText="Logging in..."
+            borderRadius="full"
+            mt={4}
+          >
+            Login
+          </Button>
+        </VStack>
+        <Text textAlign="center" color="gray.600" fontSize="sm" mt={4}>
+          Don't have an account?{' '}
+          <Link as={ReactRouterLink} to="/signup" color="blue.600" _hover={{ textDecoration: 'underline' }}>
+            Sign Up
+          </Link>
+        </Text>
+      </Box>
+    </Flex>
   );
 }
 
-export default App;
+export default LoginPage;

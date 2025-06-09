@@ -43,7 +43,6 @@ function JobPostingDetailPage() {
         if (docSnap.exists()) {
           const data = docSnap.data();
           setJobPost({ id: docSnap.id, ...data });
-          // Check if current talent user has already expressed interest
           if (userProfile?.role === 'talent' && currentUser && data.interestedUsers?.includes(currentUser.uid)) {
             setIsInterestExpressed(true);
           }
@@ -53,8 +52,9 @@ function JobPostingDetailPage() {
       } catch (err) {
         console.error('Error fetching job post:', err);
         setError('Failed to load job posting details.');
+      } finally { // Use finally to ensure loading is set to false
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     fetchJobPost();
@@ -69,7 +69,7 @@ function JobPostingDetailPage() {
           return userDocSnap.exists() ? { id: userDocSnap.id, ...userDocSnap.data() } : null;
         });
         const talentResults = await Promise.all(talentPromises);
-        setInterestedTalent(talentResults.filter(Boolean)); // Filter out nulls
+        setInterestedTalent(talentResults.filter(Boolean));
       } else {
           setInterestedTalent([]);
       }
@@ -198,9 +198,9 @@ function JobPostingDetailPage() {
                     <Text fontSize="sm" color="gray.700" mb={2}>{talent.email}</Text>
                     <Text fontSize="sm" color="gray.600">Skills: {talent.skills?.join(', ') || 'N/A'}</Text>
                     <Text fontSize="sm" color="gray.600" noOfLines={1}>Bio: {talent.bio || 'N/A'}</Text>
-                    {/* Add a direct link to their profile (once that feature is implemented) */}
+                    {/* UPDATED LINK: Point to the new PublicProfilePage */}
                     <Link as={ReactRouterLink} to={`/profile/${talent.id}`} color="blue.500" fontSize="sm" mt={2} display="block" _hover={{ textDecoration: 'underline' }}>
-                      View Full Profile (Future Feature)
+                      View Full Profile
                     </Link>
                   </CardBody>
                 </Card>
