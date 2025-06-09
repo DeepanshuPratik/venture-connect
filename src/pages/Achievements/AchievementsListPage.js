@@ -13,9 +13,13 @@ import {
   Card,
   CardHeader,
   CardBody,
-  Image,
+  // Removed: Image
   Flex,
-  Link
+  Link,
+  VStack,
+  HStack,
+  Avatar,
+  Tag,
 } from '@chakra-ui/react';
 
 function AchievementsListPage() {
@@ -31,17 +35,22 @@ function AchievementsListPage() {
       for (const docSnapshot of snapshot.docs) {
         const data = docSnapshot.data();
         let postedByName = 'Unknown';
+        let authorRole = ''; // Also fetch author role
         if (data.postedBy) {
           const userDocRef = doc(db, 'users', data.postedBy);
           const userDocSnap = await getDoc(userDocRef);
           if (userDocSnap.exists()) {
-            postedByName = userDocSnap.data().name || 'Entrepreneur';
+            const userData = userDocSnap.data();
+            postedByName = userData.name || 'Entrepreneur';
+            authorRole = userData.role || '';
           }
         }
         fetchedAchievements.push({
           id: docSnapshot.id,
           ...data,
           postedByName,
+          authorRole, // Add author role to achievement data
+          postedAt: data.postedAt?.toDate().toLocaleDateString(),
         });
       }
       setAchievements(fetchedAchievements);
@@ -83,15 +92,28 @@ function AchievementsListPage() {
           {achievements.map((achievement) => (
             <Card key={achievement.id} bg="gray.50" shadow="sm" border="1px" borderColor="gray.200">
               <CardHeader pb={2}>
-                <Heading size="md" color="gray.800">{achievement.title}</Heading>
-                <Text fontSize="sm" color="gray.600" mt={1}>
-                  Posted by: {achievement.postedByName} on {achievement.postedAt?.toDate().toLocaleDateString()}
-                </Text>
+                <Flex align="center" gap={3}>
+                  {/* Display Avatar if you like, even without image upload capability */}
+                  <Avatar name={achievement.postedByName} size="md" />
+                  <VStack align="flex-start" spacing={0}>
+                    <Heading size="md" color="gray.800">{achievement.title}</Heading>
+                    <Text fontSize="sm" color="gray.600">
+                      By {achievement.postedByName}{' '}
+                      {achievement.authorRole && (
+                        <Tag size="sm" colorScheme={achievement.authorRole === 'entrepreneur' ? 'purple' : 'blue'} ml={1}>
+                          {achievement.authorRole}
+                        </Tag>
+                      )}
+                    </Text>
+                    <Text fontSize="xs" color="gray.500">{achievement.postedAt}</Text>
+                  </VStack>
+                </Flex>
               </CardHeader>
               <CardBody pt={0}>
-                {achievement.imageUrl && (
+                {/* Removed: Image component */}
+                {/* {achievement.imageUrl && (
                   <Image src={achievement.imageUrl} alt={achievement.title} objectFit="cover" borderRadius="md" mb={4} />
-                )}
+                )} */}
                 <Text noOfLines={4} color="gray.700" lineHeight="tall">{achievement.description}</Text>
               </CardBody>
             </Card>

@@ -5,6 +5,9 @@ import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import LoadingSpinner from './components/LoadingSpinner';
 
+// Import Chakra UI components for layout
+import { Flex, Box, Container } from '@chakra-ui/react'; // <--- ADD Flex, Box, Container
+
 // Pages
 import LoginPage from './pages/Auth/LoginPage';
 import SignupPage from './pages/Auth/SignupPage';
@@ -50,17 +53,21 @@ function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+      // Centralize loading spinner when the whole app is loading
+      <Flex minH="100vh" align="center" justify="center" bg="gray.100">
         <LoadingSpinner />
-      </div>
+      </Flex>
     );
   }
 
   return (
     <Router>
-      <div className="flex flex-col min-h-screen"> {/* Use Chakra UI Flex later */}
+      {/* Outer Flex container to make the footer sticky */}
+      <Flex direction="column" minH="100vh"> {/* Use Flex, direction="column", minH="100vh" */}
         <Navbar />
-        <main className="flex-grow container mx-auto p-4"> {/* Use Chakra UI Box/Container later */}
+
+        {/* Main content area - takes up available space */}
+        <Box as="main" flexGrow={1} maxW="container.xl" mx="auto" p={4} w="full"> {/* Use Box as "main", flexGrow={1} */}
           <Routes>
             {/* Public Routes */}
             <Route path="/login" element={<LoginPage />} />
@@ -92,9 +99,10 @@ function App() {
             {/* Catch-all for 404 */}
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
-        </main>
+        </Box> {/* End of main content Box */}
+
         <Footer />
-      </div>
+      </Flex> {/* End of Flex container */}
     </Router>
   );
 }

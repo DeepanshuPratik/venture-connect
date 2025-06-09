@@ -16,23 +16,64 @@ import {
   AlertIcon,
   VStack,
   HStack,
-  useToast
+  useToast,
+  Progress, // For step progress indication
+  Card,
+  CardBody,
+  CardFooter,
+  Divider,
+  Spacer
 } from '@chakra-ui/react';
-// import { storage } from '../../firebase/firebase'; // Uncomment if you implement image uploads
-// import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { FaArrowLeft, FaArrowRight, FaCheckCircle } from 'react-icons/fa'; // Import icons
+import LoadingSpinner from '../../components/LoadingSpinner';
+
 
 function CreateAchievementPage() {
+  const [currentStep, setCurrentStep] = useState(1);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  // const [imageFile, setImageFile] = useState(null); // Uncomment for image upload
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false); // For final submission
+  const [error, setError] = useState(''); // For step-specific or overall errors
+
   const { currentUser, userProfile } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const maxTitleLength = 100;
+  const maxDescriptionLength = 1000;
+
+  // --- Step Navigation Functions ---
+  const handleNextStep = () => {
+    setError(''); // Clear previous errors on step change
+    if (currentStep === 1) {
+      if (!title.trim()) {
+        setError("Achievement title cannot be empty.");
+        return;
+      }
+      if (title.length > maxTitleLength) {
+        setError(`Title cannot exceed ${maxTitleLength} characters.`);
+        return;
+      }
+    } else if (currentStep === 2) {
+      if (!description.trim()) {
+        setError("Achievement description cannot be empty.");
+        return;
+      }
+      if (description.length > maxDescriptionLength) {
+        setError(`Description cannot exceed ${maxDescriptionLength} characters.`);
+        return;
+      }
+    }
+    setCurrentStep((prev) => prev + 1);
+  };
+
+  const handlePrevStep = () => {
+    setError('');
+    setCurrentStep((prev) => prev - 1);
+  };
+
+  // --- Final Submission Function ---
+  const handleSubmit = async () => {
     if (!currentUser || userProfile.role !== 'entrepreneur') {
       setError('You must be an entrepreneur to post achievements.');
       return;
@@ -40,113 +81,206 @@ function CreateAchievementPage() {
 
     setLoading(true);
     setError('');
-    let imageUrl = '';
-
-    // Uncomment and implement if you want image uploads
-    /*
-    if (imageFile) {
-      try {
-        const imageRef = ref(storage, `achievement_images/${currentUser.uid}/${imageFile.name}_${Date.now()}`);
-        await uploadBytes(imageRef, imageFile);
-        imageUrl = await getDownloadURL(imageRef);
-      } catch (uploadError) {
-        setError('Failed to upload image: ' + uploadError.message);
-        setLoading(false);
-        toast({
-          title: "Image upload failed.",
-          description: uploadError.message,
-          status: "error",
-          duration: 5000,
-          isClosable: true,
-        });
-        return;
-      }
-    }
-    */
 
     try {
       await addDoc(collection(db, 'achievements'), {
         title,
         description,
-        // imageUrl, // Uncomment if you implement image uploads
+        imageUrl: null, // No image support in this version
         postedBy: currentUser.uid,
         postedAt: serverTimestamp(),
       });
+
       toast({
-        title: "Achievement posted!",
+        title: "Achievement posted successfully!",
+        description: "Your big win is now live!",
         status: "success",
         duration: 3000,
         isClosable: true,
+        position: "top-right",
+        icon: <FaCheckCircle /> // Custom icon for success
       });
+
       navigate('/achievements');
     } catch (err) {
       setError('Failed to post achievement: ' + err.message);
-      console.error(err);
+      console.error("Error posting achievement:", err);
       toast({
         title: "Posting failed.",
-        description: error,
+        description: err.message,
         status: "error",
         duration: 5000,
         isClosable: true,
+        position: "top-right",
       });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
+
+  // --- Render different steps ---
+  const renderStepContent = () => {
+    switch (currentStep) {
+      case 1:
+        return (
+          <VStack spacing={6} align="stretch">
+            <Heading size="lg" textAlign="center" color="blue.700">
+              What's your big win? 🎉
+            </Heading>
+            <Text textAlign="center" color="gray.600">
+              Give your achievement a short, impactful title.
+            </Text>
+            <FormControl id="title" isRequired>
+              <FormLabel>Achievement Title</FormLabel>
+              <Input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="e.g., Secured Seed Funding Round, Launched MVP!"
+                maxLength={maxTitleLength}
+              />
+              <Text fontSize="sm" color="gray.500" mt={1}>
+                {title.length} / {maxTitleLength} characters
+              </Text>
+            </FormControl>
+          </VStack>
+        );
+      case 2:
+        return (
+          <VStack spacing={6} align="stretch">
+            <Heading size="lg" textAlign="center" color="blue.700">
+              Tell us the story! 📖
+            </Heading>
+            <Text textAlign="center" color="gray.600">
+              Share the details, challenges, and what makes this achievement special.
+            </Text>
+            <FormControl id="description" isRequired>
+              <FormLabel>Full Story / Description</FormLabel>
+              <Textarea
+                rows={8}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Describe your achievement in detail..."
+                maxLength={maxDescriptionLength}
+              />
+              <Text fontSize="sm" color="gray.500" mt={1}>
+                {description.length} / {maxDescriptionLength} characters
+              </Text>
+            </FormControl>
+          </VStack>
+        );
+      case 3:
+        return (
+          <VStack spacing={6} align="stretch">
+            <Heading size="lg" textAlign="center" color="blue.700">
+              Review and Publish ✨
+            </Heading>
+            <Text textAlign="center" color="gray.600">
+              Take a look at your achievement before sharing it with the community.
+            </Text>
+
+            <Box p={4} bg="gray.50" rounded="md" border="1px" borderColor="gray.200">
+              <Heading size="md" mb={2}>{title}</Heading>
+              <Divider mb={2} />
+              <Text fontSize="md" color="gray.700">{description}</Text>
+            </Box>
+          </VStack>
+        );
+      default:
+        return null;
+    }
+  };
+
+  if (!userProfile) { // Add a check for userProfile loading
+    return <LoadingSpinner />;
+  }
+
+  // Restrict access to entrepreneurs
+  if (userProfile.role !== 'entrepreneur') {
+    return (
+      <VStack spacing={4} align="center" justify="center" minH="calc(100vh - 160px)">
+        <Alert status="warning" borderRadius="md" maxWidth="md">
+          <AlertIcon />
+          <Text>Only entrepreneurs can post achievements.</Text>
+        </Alert>
+        <Button onClick={() => navigate('/dashboard')} colorScheme="blue">
+          Go to Dashboard
+        </Button>
+      </VStack>
+    );
+  }
 
   return (
     <Box maxW="container.xl" mx="auto" p={6} bg="white" rounded="lg" shadow="md">
-      <Heading as="h1" size="xl" color="gray.800" mb={6}>Post a New Achievement</Heading>
+      <Heading as="h1" size="xl" color="gray.800" mb={6} textAlign="center">
+        Share Your Achievement
+      </Heading>
+
+      {/* Progress Bar */}
+      <Progress
+        value={(currentStep / 3) * 100}
+        size="md"
+        colorScheme="blue"
+        hasStripe
+        isAnimated
+        mb={8}
+        borderRadius="full"
+      />
+
+      {/* Error Display */}
       {error && (
         <Alert status="error" mb={4} borderRadius="md">
           <AlertIcon />
           <Text>{error}</Text>
         </Alert>
       )}
-      <VStack as="form" spacing={6} onSubmit={handleSubmit} align="stretch">
-        <FormControl id="title" isRequired>
-          <FormLabel>Achievement Title</FormLabel>
-          <Input type="text" value={title} onChange={(e) => setTitle(e.target.value)} />
-        </FormControl>
 
-        <FormControl id="description" isRequired>
-          <FormLabel>Description</FormLabel>
-          <Textarea rows={6} value={description} onChange={(e) => setDescription(e.target.value)} />
-        </FormControl>
+      {/* Step Content Card */}
+      <Card border="1px" borderColor="gray.100" shadow="sm">
+        <CardBody>{renderStepContent()}</CardBody>
+        <CardFooter>
+          <HStack justify="space-between" width="full">
+            {currentStep > 1 && (
+              <Button
+                leftIcon={<FaArrowLeft />}
+                onClick={handlePrevStep}
+                colorScheme="gray"
+                variant="ghost"
+                borderRadius="full"
+              >
+                Back
+              </Button>
+            )}
+            <Spacer />
+            {currentStep < 3 && (
+              <Button
+                rightIcon={<FaArrowRight />}
+                onClick={handleNextStep}
+                colorScheme="blue"
+                borderRadius="full"
+              >
+                Next
+              </Button>
+            )}
+            {currentStep === 3 && (
+              <Button
+                leftIcon={<FaCheckCircle />}
+                onClick={handleSubmit}
+                colorScheme="green"
+                isLoading={loading}
+                loadingText="Publishing..."
+                borderRadius="full"
+              >
+                Publish Achievement
+              </Button>
+            )}
+          </HStack>
+        </CardFooter>
+      </Card>
 
-        {/* Uncomment this section for image upload (and firebase/firebase.js storage export) */}
-        {/*
-        <FormControl id="image">
-          <FormLabel>Image (Optional)</FormLabel>
-          <Input
-            type="file"
-            pt={1} // Adjust padding for file input
-            accept="image/*"
-            onChange={(e) => setImageFile(e.target.files[0])}
-          />
-          <FormHelperText>Upload an image to visually represent your achievement.</FormHelperText>
-        </FormControl>
-        */}
-
-        <HStack justify="flex-end" spacing={4} mt={6}>
-          <Button
-            onClick={() => navigate('/achievements')}
-            colorScheme="gray"
-            variant="ghost"
-            borderRadius="full"
-          >
-            Cancel
-          </Button>
-          <Button
-            type="submit"
-            colorScheme="blue"
-            isLoading={loading}
-            loadingText="Posting..."
-            borderRadius="full"
-          >
-            Post Achievement
-          </Button>
-        </HStack>
-      </VStack>
+      <Text fontSize="sm" color="gray.500" mt={4} textAlign="center">
+        Step {currentStep} of 3
+      </Text>
     </Box>
   );
 }
