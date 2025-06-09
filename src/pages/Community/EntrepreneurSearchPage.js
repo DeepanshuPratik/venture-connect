@@ -19,11 +19,14 @@ import {
   Icon,
   InputGroup,
   InputLeftElement,
+  Button,
   FormControl,
   FormLabel,
-  Button
+  Link as ChakraLink, // Alias Chakra's Link to avoid conflict with React Router's Link
 } from '@chakra-ui/react';
 import { FaSearch, FaUserTie } from 'react-icons/fa'; // Import icons
+import { Link as ReactRouterLink } from 'react-router-dom'; // <--- IMPORT REACT ROUTER LINK
+
 
 function EntrepreneurSearchPage() {
   const [allEntrepreneurs, setAllEntrepreneurs] = useState([]);
@@ -34,10 +37,10 @@ function EntrepreneurSearchPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStage, setFilterStage] = useState('');
   const [filterType, setFilterType] = useState('');
-  const [filterSkills, setFilterSkills] = useState(''); // New filter for skills
+  const [filterSkills, setFilterSkills] = useState('');
 
   const startupStageNames = [
-    '', // All stages
+    '', // All stages (empty string for default)
     'Ideation / Discovery',
     'MVP / Early Traction',
     'Seed Stage / Fundraising',
@@ -45,7 +48,7 @@ function EntrepreneurSearchPage() {
   ];
 
   const startupTypeOptions = [
-    '', // All types
+    '', // All types (empty string for default)
     'SaaS', 'E-commerce', 'Fintech', 'AI / Machine Learning', 'Healthcare / Biotech',
     'EdTech', 'Deep Tech', 'Consumer Goods', 'Logistics / Supply Chain',
     'Media / Entertainment', 'Hardware', 'Biotech', 'CleanTech / Greentech',
@@ -53,13 +56,12 @@ function EntrepreneurSearchPage() {
   ];
 
   useEffect(() => {
-    // Fetch all users, then filter locally for 'entrepreneur' role
     const q = query(collection(db, 'users'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       const entrepreneurs = users.filter(user => user.role === 'entrepreneur');
       setAllEntrepreneurs(entrepreneurs);
-      setFilteredEntrepreneurs(entrepreneurs); // Initialize filtered with all entrepreneurs
+      setFilteredEntrepreneurs(entrepreneurs);
       setLoading(false);
     }, (err) => {
       console.error("Error fetching users:", err);
@@ -73,29 +75,25 @@ function EntrepreneurSearchPage() {
   useEffect(() => {
     let currentFiltered = allEntrepreneurs;
 
-    // Filter by search term (name)
     if (searchTerm) {
       currentFiltered = currentFiltered.filter(entrepreneur =>
-        entrepreneur.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        entrepreneur.startupVision?.toLowerCase().includes(searchTerm.toLowerCase())
+        (entrepreneur.name && entrepreneur.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (entrepreneur.startupVision && entrepreneur.startupVision.toLowerCase().includes(searchTerm.toLowerCase()))
       );
     }
 
-    // Filter by startup stage
     if (filterStage) {
       currentFiltered = currentFiltered.filter(entrepreneur =>
         entrepreneur.startupStage === filterStage
       );
     }
 
-    // Filter by startup type
     if (filterType) {
       currentFiltered = currentFiltered.filter(entrepreneur =>
         entrepreneur.startupType === filterType
       );
     }
 
-    // Filter by skills (entrepreneurs might list some skills too, or could be used for talent search later)
     if (filterSkills) {
         const searchSkillsArray = filterSkills.toLowerCase().split(',').map(s => s.trim()).filter(s => s);
         currentFiltered = currentFiltered.filter(entrepreneur =>
@@ -135,7 +133,7 @@ function EntrepreneurSearchPage() {
         </InputGroup>
 
         <HStack spacing={4} wrap="wrap">
-          <FormControl flex="1" minW="150px">
+          <FormControl flex="1" minW={{ base: '100%', md: '150px' }}>
             <FormLabel htmlFor="filterStage">Startup Stage</FormLabel>
             <Select id="filterStage" value={filterStage} onChange={(e) => setFilterStage(e.target.value)}>
               {startupStageNames.map((stage, index) => (
@@ -144,7 +142,7 @@ function EntrepreneurSearchPage() {
             </Select>
           </FormControl>
 
-          <FormControl flex="1" minW="150px">
+          <FormControl flex="1" minW={{ base: '100%', md: '150px' }}>
             <FormLabel htmlFor="filterType">Startup Type</FormLabel>
             <Select id="filterType" value={filterType} onChange={(e) => setFilterType(e.target.value)}>
               {startupTypeOptions.map((type, index) => (
@@ -153,7 +151,7 @@ function EntrepreneurSearchPage() {
             </Select>
           </FormControl>
 
-          <FormControl flex="1" minW="150px">
+          <FormControl flex="1" minW={{ base: '100%', md: '150px' }}>
             <FormLabel htmlFor="filterSkills">Skills (comma-separated)</FormLabel>
             <Input
               id="filterSkills"
@@ -208,9 +206,12 @@ function EntrepreneurSearchPage() {
                     </Box>
                 )}
               </CardBody>
-              <Button size="sm" colorScheme="blue" variant="outline" mx={4} mb={4} borderRadius="full">
-                View Profile (Future Feature)
-              </Button>
+              {/* UPDATED LINK: Wrap the button with React Router's Link */}
+              <ChakraLink as={ReactRouterLink} to={`/profile/${entrepreneur.id}`} _hover={{ textDecoration: 'none' }} mx={4} mb={4}>
+                <Button size="sm" colorScheme="blue" variant="outline" width="full" borderRadius="full">
+                  View Profile
+                </Button>
+              </ChakraLink>
             </Card>
           ))}
         </SimpleGrid>
