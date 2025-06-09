@@ -1,9 +1,15 @@
-# VentureConnect 🚀
+# VentureConnect 🚀  [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 
 **Empowering Entrepreneurial Journeys & Opportunities**
 
-![VentureConnect Screenshot Placeholder](https://via.placeholder.com/1200x600?text=VentureConnect+App+Screenshot)
-*(Replace this with actual screenshots or a GIF of your running application!)*
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/92b08bf5-4414-4a9f-a83c-6504e69b1d62" alt="VentureConnect Screenshot 1" width="800"/>
+  <br><br>
+  <img src="https://github.com/user-attachments/assets/eeeb6899-2173-4a42-8b52-16f3b544aae4" alt="VentureConnect Screenshot 2" width="800"/>
+  <br><br>
+  <img src="https://github.com/user-attachments/assets/10b07972-6dbc-41d7-8e1a-c9eaf913bc77" alt="VentureConnect Screenshot 3" width="800"/>
+</p>
 
 ## Table of Contents
 
@@ -194,17 +200,18 @@ REACT_APP_FIREBASE_STORAGE_BUCKET="YOUR_FIREBASE_STORAGE_BUCKET"
 REACT_APP_FIREBASE_MESSAGING_SENDER_ID="YOUR_FIREBASE_MESSAGING_SENDER_ID"
 REACT_APP_FIREBASE_APP_ID="YOUR_FIREBASE_APP_ID"
 REACT_APP_FIREBASE_MEASUREMENT_ID="YOUR_FIREBASE_MEASUREMENT_ID" # Optional, for Google Analytics
-
+```
 
 ### Running the Application
 Once everything is set up, you can start the development server:
 npm start
-# OR
+#### OR
 yarn start
 Use code with caution.
 Bash
 The application will open in your browser at http://localhost:3000.
-5. Project Structure
+## 5. Project Structure
+```
 venture-connect/
 ├── public/
 ├── src/
@@ -232,8 +239,9 @@ venture-connect/
 ├── .env                        # Environment variables (gitignore'd)
 ├── package.json
 └── README.md
+```
 Use code with caution.
-6. Usage Guide
+## 6. Usage Guide
 Upon launching the application:
 Sign Up / Log In: Create an account. During signup, select your role (Entrepreneur or Talent).
 Complete Your Profile: Navigate to your profile section.
@@ -249,18 +257,19 @@ For Talent:
 Browse Jobs: Explore exciting opportunities from innovative startups.
 Express Interest: Click the "Express Interest" button on any job that catches your eye.
 Discover: Explore achievement posts, meetups, and journey articles from the community.
-7. Contributing
+## 7. Contributing
 We welcome contributions to VentureConnect! If you have suggestions for improvements, new features, or find a bug, please feel free to:
 Fork the repository.
-Create a new branch (git checkout -b feature/your-feature-name or bugfix/issue-name).
-Make your changes and ensure tests pass (if any).
-Commit your changes (git commit -m 'feat: Add new feature X').
-Push to your branch (git push origin feature/your-feature-name).
-Open a Pull Request to the main branch of this repository.
+ - Create a new branch (git checkout -b feature/your-feature-name or bugfix/issue-name).
+ - Make your changes and ensure tests pass (if any).
+ - Commit your changes (git commit -m 'feat: Add new feature X').
+ - Push to your branch (git push origin feature/your-feature-name).
+ - Open a Pull Request to the main branch of this repository.
 Please follow conventional commits if possible (feat:, fix:, chore:, etc.).
-8. License
+## 8. License
 This project is licensed under the MIT License - see the LICENSE file for details.
-9. Contact
+
+## 9. Contact
 For any questions or inquiries, please reach out:
-Your Name/Email: your.email@example.com
-Your GitHub: github.com/your-username
+- Email: deepanshu.pratik@gmail.com
+- GitHub: github.com/DeepanshuPratik
