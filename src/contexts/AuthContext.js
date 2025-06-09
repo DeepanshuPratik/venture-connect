@@ -15,10 +15,8 @@ export function AuthContextProvider({ children }) {
   const [userProfile, setUserProfile] = useState(null); // Stores user's Firestore profile
   const [loading, setLoading] = useState(true);
 
-  // --- Auth Functions ---
   const signup = async (email, password, role, userName) => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    // Create user profile in Firestore immediately after signup
     await setDoc(doc(db, 'users', userCredential.user.uid), {
       email: email,
       name: userName,
@@ -28,6 +26,7 @@ export function AuthContextProvider({ children }) {
       skills: [],
       startupVision: '',
       startupStage: 'Ideation / Discovery', // Default stage
+      startupType: role === 'entrepreneur' ? '' : undefined, // Initialize startupType for entrepreneurs
       createdAt: new Date(),
     });
     return userCredential;
@@ -41,31 +40,29 @@ export function AuthContextProvider({ children }) {
     return signOut(auth);
   };
 
-  // --- Effect for Auth State Changes ---
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
       if (user) {
-        // Fetch user profile from Firestore
         const docRef = doc(db, 'users', user.uid);
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
           setUserProfile(docSnap.data());
         } else {
-          // This should ideally not happen if profile is created on signup
           console.warn("User profile not found in Firestore. Creating a basic one.");
           await setDoc(doc(db, 'users', user.uid), {
             email: user.email,
             name: user.displayName || 'New User',
-            role: 'talent', // Default role if not found
+            role: 'talent',
             bio: '',
             previousTrack: [],
             skills: [],
             startupVision: '',
             startupStage: 'Ideation / Discovery',
+            startupType: undefined, // Default for non-entrepreneur if not found
             createdAt: new Date(),
           });
-          const newDocSnap = await getDoc(docRef); // Re-fetch
+          const newDocSnap = await getDoc(docRef);
           setUserProfile(newDocSnap.data());
         }
       } else {
@@ -74,7 +71,7 @@ export function AuthContextProvider({ children }) {
       setLoading(false);
     });
 
-    return unsubscribe; // Cleanup subscription on unmount
+    return unsubscribe;
   }, []);
 
   const value = {
@@ -93,6 +90,4 @@ export function AuthContextProvider({ children }) {
   );
 }
 
-
-export { AuthContext }; 
-
+export { AuthContext };

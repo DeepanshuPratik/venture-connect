@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { useAuth } from './hooks/useAuth'; // Custom hook for authentication
+import { useAuth } from './hooks/useAuth';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import LoadingSpinner from './components/LoadingSpinner';
@@ -18,6 +18,11 @@ import AchievementsListPage from './pages/Achievements/AchievementsListPage';
 import CreateAchievementPage from './pages/Achievements/CreateAchievementPage';
 import NotFoundPage from './pages/NotFoundPage';
 
+// New Community Pages
+import CommunityPage from './pages/Community/CommunityPage';
+import EntrepreneurSearchPage from './pages/Community/EntrepreneurSearchPage';
+import CommunityFeedPage from './pages/Community/CommunityFeedPage';
+
 
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -33,7 +38,8 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 
   // Optional: Role-based protection
   if (allowedRoles && userProfile && !allowedRoles.includes(userProfile.role)) {
-    return <Navigate to="/dashboard" replace />; // Or a permission denied page
+    // If not allowed, redirect to dashboard or a permission denied page
+    return <Navigate to="/dashboard" replace />;
   }
 
   return children;
@@ -52,9 +58,9 @@ function App() {
 
   return (
     <Router>
-      <div className="flex flex-col min-h-screen">
+      <div className="flex flex-col min-h-screen"> {/* Use Chakra UI Flex later */}
         <Navbar />
-        <main className="flex-grow container mx-auto p-4">
+        <main className="flex-grow container mx-auto p-4"> {/* Use Chakra UI Box/Container later */}
           <Routes>
             {/* Public Routes */}
             <Route path="/login" element={<LoginPage />} />
@@ -73,6 +79,12 @@ function App() {
             {/* Achievements */}
             <Route path="/achievements" element={<ProtectedRoute><AchievementsListPage /></ProtectedRoute>} />
             <Route path="/achievements/new" element={<ProtectedRoute allowedRoles={['entrepreneur']}><CreateAchievementPage /></ProtectedRoute>} />
+
+            {/* Community Section */}
+            <Route path="/community" element={<ProtectedRoute><CommunityPage /></ProtectedRoute>} />
+            <Route path="/community/entrepreneurs" element={<ProtectedRoute><EntrepreneurSearchPage /></ProtectedRoute>} />
+            <Route path="/community/feed" element={<ProtectedRoute><CommunityFeedPage /></ProtectedRoute>} />
+
 
             {/* Home/Default Route */}
             <Route path="/" element={<Navigate to="/dashboard" replace />} />

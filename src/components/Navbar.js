@@ -12,11 +12,11 @@ function Navbar() {
       await logout();
       navigate('/login');
     } catch (error) {
-      alert('Failed to log out: ' + error.message); // Use Chakra's Toast for better UX
+      alert('Failed to log out: ' + error.message);
     }
   };
 
-  const bgColor = useColorModeValue('blue.600', 'blue.800'); // Example of dark mode compatibility
+  const bgColor = useColorModeValue('blue.600', 'blue.800');
   const textColor = useColorModeValue('white', 'gray.100');
 
   return (
@@ -31,7 +31,7 @@ function Navbar() {
             <>
               <Link as={ReactRouterLink} to="/jobs" _hover={{ textDecoration: 'none', color: 'gray.200' }}>Jobs</Link>
               <Link as={ReactRouterLink} to="/achievements" _hover={{ textDecoration: 'none', color: 'gray.200' }}>Achievements</Link>
-              {/* Add Meetups/Journeys links here */}
+              <Link as={ReactRouterLink} to="/community" _hover={{ textDecoration: 'none', color: 'gray.200' }}>Community</Link> {/* NEW LINK */}
               <Link as={ReactRouterLink} to="/profile" _hover={{ textDecoration: 'none', color: 'gray.200' }}>Profile</Link>
               <Button
                 onClick={handleLogout}

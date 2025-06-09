@@ -22,28 +22,29 @@ import {
   SliderFilledTrack,
   SliderThumb,
   Tooltip,
-  useToast, // Import useToast
+  useToast,
+  Select // Import Select for dropdown
 } from '@chakra-ui/react';
 
 function EditProfilePage() {
   const { currentUser, userProfile, loading } = useAuth();
   const navigate = useNavigate();
-  const toast = useToast(); // Initialize useToast hook
+  const toast = useToast();
 
   const [name, setName] = useState('');
   const [bio, setBio] = useState('');
-  const [previousTrack, setPreviousTrack] = useState(''); // Comma separated for simplicity
-  const [skills, setSkills] = useState(''); // Comma separated for simplicity
+  const [previousTrack, setPreviousTrack] = useState('');
+  const [skills, setSkills] = useState('');
   const [portfolioLink, setPortfolioLink] = useState('');
   const [resumeLink, setResumeLink] = useState('');
   const [startupVision, setStartupVision] = useState('');
-  const [startupStageIndex, setStartupStageIndex] = useState(0); // Index for slider
-  const [showTooltip, setShowTooltip] = useState(false); // State for Slider tooltip
+  const [startupStageIndex, setStartupStageIndex] = useState(0);
+  const [startupType, setStartupType] = useState(''); // New state for startupType
+  const [showTooltip, setShowTooltip] = useState(false);
 
   const [isUpdating, setIsUpdating] = useState(false);
-  const [error, setError] = useState(''); // Local error state for form specific errors
+  const [error, setError] = useState('');
 
-  // Define startup stage names for the slider
   const startupStageNames = [
     'Ideation / Discovery',
     'MVP / Early Traction',
@@ -51,7 +52,24 @@ function EditProfilePage() {
     'Growth / Scaling'
   ];
 
-  // Effect to populate form fields when userProfile is loaded
+  const startupTypeOptions = [ // Predefined options for startup type
+    'SaaS',
+    'E-commerce',
+    'Fintech',
+    'AI / Machine Learning',
+    'Healthcare / Biotech',
+    'EdTech',
+    'Deep Tech',
+    'Consumer Goods',
+    'Logistics / Supply Chain',
+    'Media / Entertainment',
+    'Hardware',
+    'Biotech',
+    'CleanTech / Greentech',
+    'Social Impact',
+    'Other'
+  ];
+
   useEffect(() => {
     if (userProfile) {
       setName(userProfile.name || '');
@@ -61,16 +79,16 @@ function EditProfilePage() {
       setPortfolioLink(userProfile.portfolioLink || '');
       setResumeLink(userProfile.resumeLink || '');
       setStartupVision(userProfile.startupVision || '');
-      // Set slider index based on current stage name from userProfile
       const currentStageIndex = startupStageNames.indexOf(userProfile.startupStage || 'Ideation / Discovery');
       setStartupStageIndex(currentStageIndex !== -1 ? currentStageIndex : 0);
+      setStartupType(userProfile.startupType || ''); // Set startupType from profile
     }
-  }, [userProfile]); // Dependency array: re-run when userProfile changes
+  }, [userProfile]);
 
   const handleSubmit = async (e) => {
-    e.preventDefault(); // Prevent default form submission
-    setIsUpdating(true); // Set loading state
-    setError(''); // Clear previous errors
+    e.preventDefault();
+    setIsUpdating(true);
+    setError('');
 
     try {
       if (!currentUser) {
@@ -81,23 +99,21 @@ function EditProfilePage() {
       const updates = {
         name,
         bio,
-        // Convert comma-separated string to array, filter out empty strings
         previousTrack: previousTrack.split(',').map(s => s.trim()).filter(s => s),
       };
 
       if (userProfile.role === 'entrepreneur') {
         updates.startupVision = startupVision;
-        // Use the selected stage name based on the slider index
         updates.startupStage = startupStageNames[startupStageIndex];
+        updates.startupType = startupType; // Save startupType
       } else if (userProfile.role === 'talent') {
         updates.skills = skills.split(',').map(s => s.trim()).filter(s => s);
         updates.portfolioLink = portfolioLink;
         updates.resumeLink = resumeLink;
       }
 
-      await updateDoc(userDocRef, updates); // Update the user document in Firestore
+      await updateDoc(userDocRef, updates);
 
-      // Show success toast notification
       toast({
         title: "Profile updated!",
         status: "success",
@@ -106,14 +122,11 @@ function EditProfilePage() {
         position: "top-right",
       });
 
-      // Navigate back to profile page after a short delay for toast to show
       setTimeout(() => navigate('/profile'), 1500);
 
     } catch (err) {
-      // Set local error state for display on form
       setError('Failed to update profile: ' + err.message);
       console.error("Error updating profile:", err);
-      // Show error toast notification
       toast({
         title: "Update failed.",
         description: err.message,
@@ -123,11 +136,10 @@ function EditProfilePage() {
         position: "top-right",
       });
     } finally {
-      setIsUpdating(false); // Reset loading state
+      setIsUpdating(false);
     }
   };
 
-  // Show a loading spinner if user profile is still being fetched
   if (loading || !userProfile) {
     return <LoadingSpinner />;
   }
@@ -136,7 +148,6 @@ function EditProfilePage() {
     <Box maxW="container.xl" mx="auto" p={6} bg="white" rounded="lg" shadow="md">
       <Heading as="h1" size="xl" color="gray.800" mb={6}>Edit Profile</Heading>
 
-      {/* Display local form error if any */}
       {error && (
         <Alert status="error" mb={4} borderRadius="md">
           <AlertIcon />
@@ -144,7 +155,6 @@ function EditProfilePage() {
         </Alert>
       )}
 
-      {/* Form using Chakra UI VStack for vertical spacing */}
       <VStack as="form" spacing={6} onSubmit={handleSubmit} align="stretch">
         <FormControl id="name">
           <FormLabel>Name</FormLabel>
@@ -168,6 +178,15 @@ function EditProfilePage() {
             <FormControl id="startupVision">
               <FormLabel>Startup Vision</FormLabel>
               <Textarea rows={5} value={startupVision} onChange={(e) => setStartupVision(e.target.value)} />
+            </FormControl>
+
+            <FormControl id="startupType"> {/* New form control for startup type */}
+              <FormLabel>Startup Type</FormLabel>
+              <Select placeholder="Select type" value={startupType} onChange={(e) => setStartupType(e.target.value)}>
+                {startupTypeOptions.map((option, index) => (
+                  <option key={index} value={option}>{option || "Select type"}</option>
+                ))}
+              </Select>
             </FormControl>
 
             <FormControl id="startupStage">
@@ -198,12 +217,11 @@ function EditProfilePage() {
                   isOpen={showTooltip}
                   label={startupStageNames[startupStageIndex]}
                 >
-                  <SliderThumb boxSize={6} /> {/* Increased thumb size for better dragging */}
+                  <SliderThumb boxSize={6} />
                 </Tooltip>
               </Slider>
               <HStack justify="space-between" mt={2} fontSize="xs" color="gray.500">
                 {startupStageNames.map((stage, index) => (
-                  // Display only the primary name for brevity in slider labels
                   <Text key={index} textAlign="center" flex="1">{stage.split(' / ')[0]}</Text>
                 ))}
               </HStack>
@@ -230,12 +248,11 @@ function EditProfilePage() {
           </>
         )}
 
-        {/* Action buttons */}
         <HStack justify="flex-end" spacing={4} mt={6}>
           <Button
             onClick={() => navigate('/profile')}
             colorScheme="gray"
-            variant="ghost" // A more subtle button style
+            variant="ghost"
             borderRadius="full"
           >
             Cancel
@@ -243,7 +260,7 @@ function EditProfilePage() {
           <Button
             type="submit"
             colorScheme="blue"
-            isLoading={isUpdating} // Show loading spinner on button
+            isLoading={isUpdating}
             loadingText="Saving..."
             borderRadius="full"
           >

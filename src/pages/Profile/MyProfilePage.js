@@ -8,10 +8,9 @@ import {
   Text,
   Button,
   Grid,
-  Flex,
-  GridItem,
   VStack,
   HStack,
+  Flex,
   Tag,
   Link
 } from '@chakra-ui/react';
@@ -44,6 +43,9 @@ function MyProfilePage() {
             <Heading as="h2" size="md" color="gray.700">Startup Details</Heading>
             <Text><Text as="strong" color="gray.800">Startup Vision:</Text> {userProfile.startupVision || 'Not provided'}</Text>
             <Text><Text as="strong" color="gray.800">Startup Stage:</Text> <Tag colorScheme="teal">{userProfile.startupStage || 'Not set'}</Tag></Text>
+            {userProfile.startupType && ( // Display startupType if it exists
+                <Text><Text as="strong" color="gray.800">Startup Type:</Text> <Tag colorScheme="orange">{userProfile.startupType}</Tag></Text>
+            )}
           </VStack>
         )}
 
