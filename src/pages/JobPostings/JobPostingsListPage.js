@@ -1,27 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { Link as ReactRouterLink } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { db } from '../../firebase/firebase';
-import { collection, query, orderBy, onSnapshot, doc, updateDoc, arrayUnion, getDoc } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, doc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { useAuth } from '../../hooks/useAuth';
 import LoadingSpinner from '../../components/LoadingSpinner';
+
 import {
   Box,
   Heading,
   Text,
-  Button,
   SimpleGrid,
+  Button,
+  Tag,
+  Flex,
   Card,
   CardHeader,
   CardBody,
-  CardFooter,
-  VStack,
   HStack,
-  Tag,
-  Link,
-  Flex,
-  Spacer,
-  useToast
+  useToast // For showing interest success/error
 } from '@chakra-ui/react';
+
 
 function JobPostingsListPage() {
   const [jobPosts, setJobPosts] = useState([]);
@@ -30,6 +28,7 @@ function JobPostingsListPage() {
   const { currentUser, userProfile } = useAuth();
   const [interestedJobIds, setInterestedJobIds] = useState(new Set());
   const toast = useToast();
+
 
   useEffect(() => {
     if (!currentUser) {
@@ -48,20 +47,22 @@ function JobPostingsListPage() {
       setLoadingJobs(false);
     });
 
-    // Fetch user's expressed interests
-    const fetchUserInterests = async () => {
-        if (currentUser && userProfile?.role === 'talent') {
-            const userInterestsRef = doc(db, 'users', currentUser.uid);
-            const userInterestsSnap = await getDoc(userInterestsRef);
-            if (userInterestsSnap.exists() && userInterestsSnap.data().interestedJobs) {
-                setInterestedJobIds(new Set(userInterestsSnap.data().interestedJobs));
-            }
-        }
-    };
-    fetchUserInterests();
+    // We no longer need to manually fetch interestedJobs for the user as AuthContext
+    // provides real-time userProfile, which should include interestedJobs if you added it.
+    // If userProfile doesn't update this, you'd need a separate listener for user's interestedJobs.
+    // For now, assuming userProfile updates interestedJobs or it's handled by arrayUnion directly.
 
     return () => unsubscribe();
-  }, [currentUser, userProfile]);
+  }, [currentUser, userProfile]); // userProfile included for re-running if its structure changes
+
+  // Update interestedJobIds from userProfile if available
+  useEffect(() => {
+    if (userProfile && userProfile.role === 'talent') {
+      // Assuming userProfile.interestedJobs is correctly maintained in Firestore for the talent user
+      setInterestedJobIds(new Set(userProfile.interestedJobs || []));
+    }
+  }, [userProfile]);
+
 
   if (loadingJobs) {
     return <LoadingSpinner />;
@@ -72,12 +73,22 @@ function JobPostingsListPage() {
   }
 
   const handleShowInterest = async (jobId) => {
-    if (!currentUser || userProfile.role !== 'talent') {
+    if (!currentUser) {
       toast({
-        title: "Action Restricted",
-        description: "You must be logged in as Talent to show interest.",
+        title: "Login Required",
+        description: "Please log in to express interest.",
+        status: "info",
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+    if (userProfile.role !== 'talent') {
+      toast({
+        title: "Role Mismatch",
+        description: "Only 'Talent' users can express interest in jobs.",
         status: "warning",
-        duration: 5000,
+        duration: 3000,
         isClosable: true,
       });
       return;
@@ -95,22 +106,23 @@ function JobPostingsListPage() {
       await updateDoc(userRef, {
         interestedJobs: arrayUnion(jobId)
       });
-      setInterestedJobIds(prev => new Set(prev).add(jobId)); // Update local state
+      // The onSnapshot listener in AuthContext will update userProfile and thus interestedJobIds
 
       toast({
-        title: "Interest Expressed!",
+        title: "Interest expressed!",
         description: "The entrepreneur has been notified of your interest.",
         status: "success",
         duration: 3000,
         isClosable: true,
       });
+
     } catch (err) {
       console.error('Error showing interest:', err);
       toast({
-        title: "Failed to Express Interest.",
-        description: "Please try again later.",
+        title: "Failed to express interest.",
+        description: err.message,
         status: "error",
-        duration: 5000,
+        duration: 4000,
         isClosable: true,
       });
     }
@@ -122,10 +134,8 @@ function JobPostingsListPage() {
       <Flex justify="space-between" align="center" mb={6}>
         <Heading as="h1" size="xl" color="gray.800">Job Postings</Heading>
         {userProfile && userProfile.role === 'entrepreneur' && (
-          <Link as={ReactRouterLink} to="/jobs/new" _hover={{ textDecoration: 'none' }}>
-            <Button colorScheme="blue" size="md" borderRadius="full">
-              Post a New Job
-            </Button>
+          <Link to="/jobs/new">
+            <Button colorScheme="blue">Post a New Job</Button>
           </Link>
         )}
       </Flex>
@@ -138,13 +148,14 @@ function JobPostingsListPage() {
             <Card key={post.id} bg="gray.50" shadow="sm" border="1px" borderColor="gray.200" display="flex" flexDirection="column" justifyContent="space-between">
               <CardHeader pb={2}>
                 <Heading size="md" color="gray.800">{post.jobTitle}</Heading>
-                <Text fontSize="sm" color="gray.600" mt={1}>Posted by: {post.postedByName || 'Anonymous Entrepreneur'}</Text>
+                <Text fontSize="sm" color="gray.600">Posted by: {post.postedByName || 'Anonymous Entrepreneur'}</Text>
+                <Text fontSize="xs" color="gray.500">{post.postedAt?.toDate().toLocaleDateString()}</Text>
               </CardHeader>
               <CardBody pt={0}>
                 <Text noOfLines={3} color="gray.700" mb={3}>{post.description}</Text>
                 {post.requiredSkills && post.requiredSkills.length > 0 && (
                   <Box mb={3}>
-                    <Text fontWeight="semibold" color="gray.800" mb={1}>Skills:</Text>
+                    <Text fontWeight="semibold" color="gray.800" fontSize="sm" mb={1}>Skills:</Text>
                     <HStack flexWrap="wrap">
                       {post.requiredSkills.map((skill, i) => (
                         <Tag key={i} colorScheme="blue" size="sm">{skill}</Tag>
@@ -153,29 +164,32 @@ function JobPostingsListPage() {
                   </Box>
                 )}
                 {post.payRange && (
-                  <Text color="gray.700"><Text as="strong" color="gray.800">Pay Range:</Text> {post.payRange}</Text>
+                  <Text fontSize="sm" color="gray.700" mb={3}><Text as="span" fontWeight="semibold">Pay Range:</Text> {post.payRange}</Text>
                 )}
+                {/* NEW: Display interested count */}
+                <HStack spacing={2} mb={4}>
+                    <Tag size="sm" colorScheme="blue">
+                        <Text as="span" fontWeight="bold">Interested: </Text> {post.interestedUsers?.length || 0}
+                    </Tag>
+                    {post.status && <Tag size="sm" colorScheme={post.status === 'open' ? 'green' : 'red'}>{post.status}</Tag>}
+                </HStack>
               </CardBody>
-              <CardFooter pt={0}>
-                <Flex width="full" direction={{ base: 'column', sm: 'row' }} gap={2}>
-                  <Link as={ReactRouterLink} to={`/jobs/${post.id}`} flexGrow={1} _hover={{ textDecoration: 'none' }}>
-                    <Button colorScheme="indigo" width="full" borderRadius="full">
-                      View Details
-                    </Button>
-                  </Link>
-                  {userProfile.role === 'talent' && (
-                    <Button
-                      onClick={() => handleShowInterest(post.id)}
-                      isDisabled={interestedJobIds.has(post.id)}
-                      colorScheme={interestedJobIds.has(post.id) ? 'gray' : 'green'}
-                      width="full"
-                      borderRadius="full"
-                    >
-                      {interestedJobIds.has(post.id) ? 'Interest Expressed' : 'Express Interest'}
-                    </Button>
-                  )}
-                </Flex>
-              </CardFooter>
+              <Flex p={4} pt={0} gap={2} mt="auto"> {/* Use mt="auto" to push buttons to bottom */}
+                <Link to={`/jobs/${post.id}`} style={{ flexGrow: 1 }}>
+                  <Button size="sm" variant="outline" colorScheme="blue" width="full">View Details</Button>
+                </Link>
+                {userProfile?.role === 'talent' && (
+                  <Button
+                    onClick={() => handleShowInterest(post.id)}
+                    disabled={interestedJobIds.has(post.id)}
+                    colorScheme={interestedJobIds.has(post.id) ? 'gray' : 'green'}
+                    size="sm"
+                    width="full"
+                  >
+                    {interestedJobIds.has(post.id) ? 'Interest Expressed' : 'Express Interest'}
+                  </Button>
+                )}
+              </Flex>
             </Card>
           ))}
         </SimpleGrid>
