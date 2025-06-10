@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react'; // Import useState and useEffect
-import { Link as ReactRouterLink, useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+import React from "react";
+import { Link as ReactRouterLink, useNavigate } from "react-router-dom";
+import { useAuth } from "../hooks/useAuth";
 
 import {
   Box,
@@ -9,45 +9,22 @@ import {
   Button,
   Link,
   Image,
-  useTheme
-} from '@chakra-ui/react';
+  useTheme,
+} from "@chakra-ui/react";
 
-import MyCustomLogo from '../assets/logo_vc2.png';
+import MyCustomLogo from "../assets/logo_vc2.png";
 
 function Navbar() {
   const { currentUser, userProfile, logout } = useAuth();
   const navigate = useNavigate();
   const theme = useTheme();
 
-  const [scrolled, setScrolled] = useState(false); // New state to track scroll position
-
-  // Effect to add and remove scroll listener
-  useEffect(() => {
-    const handleScroll = () => {
-      // Set 'scrolled' to true if scroll position is beyond 50px
-      // This threshold can be adjusted
-      if (window.scrollY > 50) {
-        setScrolled(true);
-      } else {
-        setScrolled(false);
-      }
-    };
-
-    // Add scroll event listener
-    window.addEventListener('scroll', handleScroll);
-
-    // Clean up the event listener when the component unmounts
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-    };
-  }, []); // Empty dependency array means this effect runs once on mount and cleans up on unmount
-
   const handleLogout = async () => {
     try {
       await logout();
-      navigate('/login');
+      navigate("/login");
     } catch (error) {
-      alert('Failed to log out: ' + error.message);
+      alert("Failed to log out: " + error.message);
     }
   };
 
@@ -55,7 +32,7 @@ function Navbar() {
 
   return (
     <Box
-      // Base styles for the Navbar
+      bg="gray.800"
       py="3"
       px="4"
       color="white"
@@ -64,16 +41,22 @@ function Navbar() {
       width="100%"
       zIndex="10"
       height={navbarHeight}
-      // Conditional styles for glass effect on scroll
-      bg={scrolled ? "rgba(8, 88, 199, 0.8)" : "blue.600"} // Transparent dark blue (blue.800 equivalent) or solid blue.600
-      backdropFilter={scrolled ? "blur(8px)" : "none"} // The glass blur effect
-      shadow={scrolled ? "xl" : "md"} // More prominent shadow when scrolled
-      transition="all 0.3s ease-in-out" // Smooth transition for all properties
+      boxShadow="0 4px 12px -2px rgba(66, 153, 225, 0.6)"
     >
-      <Flex maxW="container.xl" mx="auto" justify="space-between" align="center" h="100%">
+      <Flex
+        maxW="container.xl"
+        mx="auto"
+        justify="space-between"
+        align="center"
+        h="100%"
+      >
         {/* Logo and Brand Name */}
         <Flex align="center" gap="3">
-          <Link as={ReactRouterLink} to="/dashboard" _hover={{ textDecoration: 'none' }}>
+          <Link
+            as={ReactRouterLink}
+            to="/dashboard"
+            _hover={{ textDecoration: "none" }}
+          >
             <Flex align="center" gap="3">
               <Box bg="white" p="1" borderRadius="md" lineHeight="0">
                 <Image
@@ -96,22 +79,48 @@ function Navbar() {
             <>
               <Link
                 as={ReactRouterLink}
-                to="/jobs"
-                _hover={{ color: "teal.200", textDecoration: 'none' }}
+                to="/dashboard"
+                _hover={{ color: "blue.300", textDecoration: "none" }}
                 fontWeight="medium"
-              >Jobs</Link>
+              >
+                Dashboard
+              </Link>
+              <Link
+                as={ReactRouterLink}
+                to="/jobs"
+                _hover={{ color: "blue.300", textDecoration: "none" }}
+                fontWeight="medium"
+              >
+                Jobs
+              </Link>
+              {/* This Achievements link now goes to the page for *your* achievements/creation */}
               <Link
                 as={ReactRouterLink}
                 to="/achievements"
-                _hover={{ color: "teal.200", textDecoration: 'none' }}
+                _hover={{ color: "blue.300", textDecoration: "none" }}
                 fontWeight="medium"
-              >Achievements</Link>
+              >
+                Achievements
+              </Link>
+
+              {/* NEW: Community Hub Main Link */}
+              <Link
+                as={ReactRouterLink}
+                to="/community" // This links to the CommunityPage hub
+                _hover={{ color: "blue.300", textDecoration: "none" }}
+                fontWeight="medium"
+              >
+                Community
+              </Link>
+
               <Link
                 as={ReactRouterLink}
                 to="/profile"
-                _hover={{ color: "teal.200", textDecoration: 'none' }}
+                _hover={{ color: "blue.300", textDecoration: "none" }}
                 fontWeight="medium"
-              >Profile</Link>
+              >
+                Profile
+              </Link>
               <Button
                 onClick={handleLogout}
                 colorScheme="red"
@@ -130,15 +139,19 @@ function Navbar() {
               <Link
                 as={ReactRouterLink}
                 to="/login"
-                _hover={{ color: "teal.200", textDecoration: 'none' }}
+                _hover={{ color: "blue.300", textDecoration: "none" }}
                 fontWeight="medium"
-              >Login</Link>
+              >
+                Login
+              </Link>
               <Link
                 as={ReactRouterLink}
                 to="/signup"
-                _hover={{ color: "teal.200", textDecoration: 'none' }}
+                _hover={{ color: "blue.300", textDecoration: "none" }}
                 fontWeight="medium"
-              >Sign Up</Link>
+              >
+                Sign Up
+              </Link>
             </>
           )}
         </Flex>

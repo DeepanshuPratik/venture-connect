@@ -19,6 +19,11 @@ import CreateAchievementPage from './pages/Achievements/CreateAchievementPage';
 import NotFoundPage from './pages/NotFoundPage';
 import LandingIntroPage from './pages/LandingIntroPage';
 
+// NEW: Import Community and Entrepreneur Search Pages
+import CommunityPage from './pages/Community/CommunityPage';
+import CommunityFeedPage from './pages/Community/CommunityFeedPage'; // Renamed from AchievementsListPage used as feed
+import EntrepreneurSearchPage from './pages/Community/EntrepreneurSearchPage';
+
 // Import AnimatePresence from framer-motion
 import { AnimatePresence } from 'framer-motion';
 // Import Box from Chakra UI
@@ -56,25 +61,22 @@ function App() {
     );
   }
 
-  // Determine if Navbar/Footer should be visible
   const shouldShowNavFooter = location.pathname !== '/';
 
+  const NAV_HEIGHT = "64px";
+
   return (
-    // Outer Box: Ensures minimum height and provides flex context for its direct children (Navbar, main content, Footer)
     <Box minH="100vh" display="flex" flexDirection="column">
       {shouldShowNavFooter && <Navbar />}
 
-      {/* Main content area: This Box takes up remaining space and wraps the Routes */}
-      {/* `as="main"` provides semantic HTML. `flexGrow="1"` ensures it fills available space. */}
-      {/* Components rendered by Routes will be children of this `main` Box,
-          and thus won't be direct flex items of the outermost container, resolving layout conflicts. */}
-      <Box as="main" flexGrow="1">
+      <Box
+        as="main"
+        flexGrow="1"
+        pt={shouldShowNavFooter ? NAV_HEIGHT : "0"}
+      >
         <AnimatePresence mode="wait">
           <Routes location={location} key={location.pathname}>
-            {/* Landing Page Route: Handles its own fixed positioning and exit animation */}
             <Route path="/" element={<LandingIntroPage />} />
-
-            {/* All other routes are rendered directly. They will manage their own layouts. */}
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
 
@@ -86,20 +88,25 @@ function App() {
             <Route path="/jobs/new" element={<ProtectedRoute allowedRoles={['entrepreneur']}><CreateJobPostingPage /></ProtectedRoute>} />
             <Route path="/jobs/:id" element={<ProtectedRoute><JobPostingDetailPage /></ProtectedRoute>} />
 
+            {/* Achievements Page is now specifically for creating/listing achievements, not the general feed */}
             <Route path="/achievements" element={<ProtectedRoute><AchievementsListPage /></ProtectedRoute>} />
             <Route path="/achievements/new" element={<ProtectedRoute allowedRoles={['entrepreneur']}><CreateAchievementPage /></ProtectedRoute>} />
+
+            {/* NEW: Community Hub and its sub-pages */}
+            <Route path="/community" element={<ProtectedRoute><CommunityPage /></ProtectedRoute>} />
+            <Route path="/community/feed" element={<ProtectedRoute><CommunityFeedPage /></ProtectedRoute>} /> {/* Dedicated path for community feed */}
+            <Route path="/community/entrepreneurs" element={<ProtectedRoute><EntrepreneurSearchPage /></ProtectedRoute>} /> {/* Dedicated path for entrepreneur search */}
 
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </AnimatePresence>
-      </Box> {/* End of main content Box */}
+      </Box>
 
       {shouldShowNavFooter && <Footer />}
     </Box>
   );
 }
 
-// Wrap App component with Router for useLocation to work correctly
 function AppWithRouter() {
   return (
     <Router>
