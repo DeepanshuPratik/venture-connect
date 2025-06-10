@@ -19,18 +19,17 @@ import CreateAchievementPage from './pages/Achievements/CreateAchievementPage';
 import NotFoundPage from './pages/NotFoundPage';
 import LandingIntroPage from './pages/LandingIntroPage';
 
-// NEW: Import Community and Entrepreneur Search Pages
 import CommunityPage from './pages/Community/CommunityPage';
-import CommunityFeedPage from './pages/Community/CommunityFeedPage'; // Renamed from AchievementsListPage used as feed
+import CommunityFeedPage from './pages/Community/CommunityFeedPage';
 import EntrepreneurSearchPage from './pages/Community/EntrepreneurSearchPage';
+// NEW: Import WriteToUsPage
+import WriteToUsPage from './pages/WriteToUsPage';
 
-// Import AnimatePresence from framer-motion
+
 import { AnimatePresence } from 'framer-motion';
-// Import Box from Chakra UI
 import { Box } from '@chakra-ui/react';
 
 
-// Protected Route Component (No change)
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { currentUser, loading, userProfile } = useAuth();
 
@@ -62,7 +61,6 @@ function App() {
   }
 
   const shouldShowNavFooter = location.pathname !== '/';
-
   const NAV_HEIGHT = "64px";
 
   return (
@@ -88,14 +86,15 @@ function App() {
             <Route path="/jobs/new" element={<ProtectedRoute allowedRoles={['entrepreneur']}><CreateJobPostingPage /></ProtectedRoute>} />
             <Route path="/jobs/:id" element={<ProtectedRoute><JobPostingDetailPage /></ProtectedRoute>} />
 
-            {/* Achievements Page is now specifically for creating/listing achievements, not the general feed */}
             <Route path="/achievements" element={<ProtectedRoute><AchievementsListPage /></ProtectedRoute>} />
             <Route path="/achievements/new" element={<ProtectedRoute allowedRoles={['entrepreneur']}><CreateAchievementPage /></ProtectedRoute>} />
 
-            {/* NEW: Community Hub and its sub-pages */}
             <Route path="/community" element={<ProtectedRoute><CommunityPage /></ProtectedRoute>} />
-            <Route path="/community/feed" element={<ProtectedRoute><CommunityFeedPage /></ProtectedRoute>} /> {/* Dedicated path for community feed */}
-            <Route path="/community/entrepreneurs" element={<ProtectedRoute><EntrepreneurSearchPage /></ProtectedRoute>} /> {/* Dedicated path for entrepreneur search */}
+            <Route path="/community/feed" element={<ProtectedRoute><CommunityFeedPage /></ProtectedRoute>} />
+            <Route path="/community/entrepreneurs" element={<ProtectedRoute><EntrepreneurSearchPage /></ProtectedRoute>} />
+
+            {/* NEW: Write to Us Page Route (public, as anyone might want to give feedback) */}
+            <Route path="/write-to-us" element={<WriteToUsPage />} />
 
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
