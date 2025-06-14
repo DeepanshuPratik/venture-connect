@@ -8,6 +8,7 @@ import LoadingSpinner from './components/LoadingSpinner';
 // Pages
 import LoginPage from './pages/Auth/LoginPage';
 import SignupPage from './pages/Auth/SignupPage';
+import RoleSelectionPage from './pages/Auth/RoleSelectionPage';
 import DashboardPage from './pages/Dashboard/DashboardPage';
 import MyProfilePage from './pages/Profile/MyProfilePage';
 import EditProfilePage from './pages/Profile/EditProfilePage';
@@ -25,11 +26,38 @@ import EntrepreneurSearchPage from './pages/Community/EntrepreneurSearchPage';
 // NEW: Import WriteToUsPage
 import WriteToUsPage from './pages/WriteToUsPage';
 
-
 import { AnimatePresence } from 'framer-motion';
 import { Box } from '@chakra-ui/react';
 
+// NEW: A simpler ProtectedRoute just for the role selection page
+const RoleSelectionProtectedRoute = ({ children }) => {
+  const { currentUser, loading } = useAuth();
+  if (loading) {
+    return <LoadingSpinner />;
+  }
+  if (!currentUser) {
+    return <Navigate to="/login" replace />;
+  }
+  return children;
+};
 
+// RoleSelectionGuard Component (No change)
+const RoleSelectionGuard = ({ children }) => {
+  const { userProfile, loading } = useAuth();
+
+  if (loading) {
+    return <LoadingSpinner />;
+  }
+
+  if (userProfile && userProfile.needsRoleSelection) {
+    return <Navigate to="/select-role" replace />;
+  }
+
+  return children;
+};
+
+
+// Main Protected Route Component (No change)
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { currentUser, loading, userProfile } = useAuth();
 
@@ -45,11 +73,11 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     return <Navigate to="/dashboard" replace />;
   }
 
-  return children;
+  return <RoleSelectionGuard>{children}</RoleSelectionGuard>;
 };
 
 function App() {
-  const { loading, currentUser } = useAuth();
+  const { loading, currentUser, userProfile } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -60,7 +88,11 @@ function App() {
     );
   }
 
-  const shouldShowNavFooter = location.pathname !== '/';
+  if (currentUser && (location.pathname === '/login' || location.pathname === '/signup')) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  const shouldShowNavFooter = location.pathname !== '/' && location.pathname !== '/select-role'; // Also hide on select-role page
   const NAV_HEIGHT = "64px";
 
   return (
@@ -74,12 +106,19 @@ function App() {
       >
         <AnimatePresence mode="wait">
           <Routes location={location} key={location.pathname}>
+            {/* Public and Auth Routes */}
             <Route path="/" element={<LandingIntroPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
+            
+            {/* FIX: Use the new, simpler protected route for /select-role */}
+            <Route path="/select-role" element={<RoleSelectionProtectedRoute><RoleSelectionPage /></RoleSelectionProtectedRoute>} />
 
+            {/* Protected Routes (all other routes use the main ProtectedRoute) */}
             <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+            {/* ... other protected routes ... */}
             <Route path="/profile" element={<ProtectedRoute><MyProfilePage /></ProtectedRoute>} />
+            <Route path="/profile/:id" element={<ProtectedRoute><MyProfilePage /></ProtectedRoute>} />
             <Route path="/profile/edit" element={<ProtectedRoute><EditProfilePage /></ProtectedRoute>} />
 
             <Route path="/jobs" element={<ProtectedRoute><JobPostingsListPage /></ProtectedRoute>} />
@@ -93,7 +132,6 @@ function App() {
             <Route path="/community/feed" element={<ProtectedRoute><CommunityFeedPage /></ProtectedRoute>} />
             <Route path="/community/entrepreneurs" element={<ProtectedRoute><EntrepreneurSearchPage /></ProtectedRoute>} />
 
-            {/* NEW: Write to Us Page Route (public, as anyone might want to give feedback) */}
             <Route path="/write-to-us" element={<WriteToUsPage />} />
 
             <Route path="*" element={<NotFoundPage />} />

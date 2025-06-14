@@ -1,35 +1,32 @@
 import React, { useState } from 'react';
-import { Link as ReactRouterLink, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../hooks/useAuth'; // Correct relative path
+import { Link } from 'react-router-dom'; // No need for useNavigate here
+import { useAuth } from '../../hooks/useAuth';
 import {
   Box,
-  Heading,
-  Input,
   Button,
   FormControl,
   FormLabel,
+  Input,
   Text,
-  Alert,
-  AlertIcon,
-  VStack,
-  RadioGroup,
-  Stack,
+  useToast,
+  Flex,
+  Divider,
+  Icon,
   Radio,
-  Link,
-  Flex, // Ensure Flex is imported for the outer container
-  useToast
+  RadioGroup,
+  Stack
 } from '@chakra-ui/react';
+import { FaGoogle } from 'react-icons/fa';
 
 function SignupPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [role, setRole] = useState('talent'); // Default role
+  const [role, setRole] = useState('talent');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { signup } = useAuth();
-  const navigate = useNavigate();
+  const { signup, signInWithGoogle } = useAuth();
   const toast = useToast();
 
   const handleSubmit = async (e) => {
@@ -37,76 +34,59 @@ function SignupPage() {
     if (password !== confirmPassword) {
       return setError('Passwords do not match.');
     }
-
     setError('');
     setLoading(true);
     try {
       await signup(email, password, role, name);
+    } catch (err) {
+      setError('Failed to create an account. ' + err.message);
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    try {
+      await signInWithGoogle();
+    } catch (err) {
       toast({
-        title: "Account created successfully!",
-        description: "Welcome to VentureConnect!",
-        status: "success",
-        duration: 3000,
+        title: "Google Sign-In Failed",
+        description: err.message,
+        status: "error",
+        duration: 4000,
         isClosable: true,
       });
-      navigate('/dashboard');
-    } catch (err) {
-      setError('Failed to create an account: ' + err.message);
-      console.error(err);
     }
-    setLoading(false);
   };
 
   return (
-    <Flex align="center" justify="center" minH="calc(100vh - 160px)" bg="gray.100">
+    <Flex align="center" justify="center" minH="calc(100vh - 64px - 60px)" py={6}>
       <Box bg="white" p={8} rounded="lg" shadow="md" w="full" maxW="md">
-        <Heading as="h2" size="xl" textAlign="center" color="gray.800" mb={6}>
-          Sign Up
-        </Heading>
+        <Text as="h2" fontSize="3xl" fontWeight="bold" textAlign="center" color="gray.800" mb={6}>
+          Create Account
+        </Text>
         {error && (
-          <Alert status="error" mb={4} borderRadius="md">
-            <AlertIcon />
+          <Box bg="red.100" border="1px" borderColor="red.400" color="red.700" px={4} py={3} rounded="md" mb={4}>
             <Text>{error}</Text>
-          </Alert>
+          </Box>
         )}
-        <VStack as="form" spacing={4} onSubmit={handleSubmit}>
-          <FormControl id="name" isRequired>
+        <form onSubmit={handleSubmit}>
+          <FormControl id="name-signup" mb={4}>
             <FormLabel>Full Name</FormLabel>
-            <Input
-              type="text"
-              placeholder="Your Name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
+            <Input value={name} onChange={(e) => setName(e.target.value)} required />
           </FormControl>
-          <FormControl id="email" isRequired>
+          <FormControl id="email-signup" mb={4}>
             <FormLabel>Email</FormLabel>
-            <Input
-              type="email"
-              placeholder="Enter your email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
+            <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
           </FormControl>
-          <FormControl id="password" isRequired>
+          <FormControl id="password-signup" mb={4}>
             <FormLabel>Password</FormLabel>
-            <Input
-              type="password"
-              placeholder="Create a password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
+            <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
           </FormControl>
-          <FormControl id="confirmPassword" isRequired>
+          <FormControl id="confirmPassword-signup" mb={6}>
             <FormLabel>Confirm Password</FormLabel>
-            <Input
-              type="password"
-              placeholder="Confirm your password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-            />
+            <Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required />
           </FormControl>
-          <FormControl as="fieldset">
+          <FormControl as="fieldset" mb={6}>
             <FormLabel as="legend">I am a:</FormLabel>
             <RadioGroup onChange={setRole} value={role}>
               <Stack direction="row" spacing={6}>
@@ -115,24 +95,20 @@ function SignupPage() {
               </Stack>
             </RadioGroup>
           </FormControl>
-          <Button
-            type="submit"
-            colorScheme="blue"
-            size="lg"
-            width="full"
-            isLoading={loading}
-            loadingText="Signing Up..."
-            borderRadius="full"
-            mt={4}
-          >
+          <Button type="submit" colorScheme="blue" w="full" isLoading={loading}>
             Sign Up
           </Button>
-        </VStack>
+        </form>
+        <Flex align="center" my={6}>
+          <Divider />
+          <Text px={4} color="gray.500" whiteSpace="nowrap">OR</Text>
+          <Divider />
+        </Flex>
+        <Button w="full" variant="outline" leftIcon={<Icon as={FaGoogle} />} onClick={handleGoogleSignIn}>
+          Sign up with Google
+        </Button>
         <Text textAlign="center" color="gray.600" fontSize="sm" mt={4}>
-          Already have an account?{' '}
-          <Link as={ReactRouterLink} to="/login" color="blue.600" _hover={{ textDecoration: 'underline' }}>
-            Login
-          </Link>
+          Already have an account? <Link to="/login" style={{ color: 'blue', textDecoration: 'underline' }}>Login</Link>
         </Text>
       </Box>
     </Flex>

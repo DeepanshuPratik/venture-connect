@@ -1,12 +1,15 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+// FIX: The entire file is corrected to use onSnapshot and satisfy the linter.
+import React, { createContext, useState, useEffect } from 'react'; // useContext is not needed here
 import { auth, db } from '../firebase/firebase';
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
+  GoogleAuthProvider,
+  signInWithPopup,
 } from 'firebase/auth';
-import { doc, setDoc, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, setDoc, onSnapshot, serverTimestamp } from 'firebase/firestore'; // onSnapshot is used
 
 const AuthContext = createContext();
 
@@ -14,17 +17,16 @@ export function AuthContextProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
-  // Add an error state if you want to expose it via context (optional, but good for debugging)
-  const [error, setError] = useState(null); 
+  const [error, setError] = useState(null);
 
   const signup = async (email, password, role, userName) => {
-    // Clear any previous errors on new action
     setError(null);
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     await setDoc(doc(db, 'users', userCredential.user.uid), {
       email: email,
       name: userName,
       role: role,
+      needsRoleSelection: false,
       bio: '',
       workExperiences: [],
       startupName: '',
@@ -36,96 +38,112 @@ export function AuthContextProvider({ children }) {
       skills: [],
       portfolioLink: '',
       resumeLink: '',
-      createdAt: new Date(),
+      createdAt: serverTimestamp(),
     });
     return userCredential;
   };
 
   const login = (email, password) => {
-    // Clear any previous errors on new action
     setError(null);
     return signInWithEmailAndPassword(auth, email, password);
   };
 
+  const signInWithGoogle = async () => {
+    setError(null);
+    const provider = new GoogleAuthProvider();
+    try {
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+
+      const docRef = doc(db, 'users', user.uid);
+      const docSnap = await getDoc(docRef);
+
+      if (!docSnap.exists()) {
+        await setDoc(docRef, {
+          email: user.email,
+          name: user.displayName,
+          role: 'pending',
+          needsRoleSelection: true,
+          bio: '',
+          workExperiences: [],
+          startupName: '',
+          startupTagline: '',
+          startupIndustry: '',
+          startupWebsite: '',
+          startupVision: '',
+          startupStage: 'Ideation / Discovery',
+          skills: [],
+          portfolioLink: '',
+          resumeLink: '',
+          createdAt: serverTimestamp(),
+        });
+      }
+      return result;
+    } catch (error) {
+      setError(error.message);
+      console.error("Error during Google sign-in:", error);
+      throw error;
+    }
+  };
+
   const logout = () => {
-    // Clear any previous errors on new action
     setError(null);
     return signOut(auth);
   };
 
   useEffect(() => {
-    let unsubscribeUserProfile = null;
+    let unsubscribeUserProfile = null; // Defined here to be accessible in cleanup
 
+    // onAuthStateChanged returns its own unsubscribe function
     const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
-      setCurrentUser(user);
+      setCurrentUser(user); // This setter IS used
       if (user) {
-        setLoading(true);
-        setError(null); 
-
+        setLoading(true); // This setter IS used
+        setError(null);
         const userDocRef = doc(db, 'users', user.uid);
 
+        // onSnapshot also returns its own unsubscribe function
         unsubscribeUserProfile = onSnapshot(userDocRef, (docSnap) => {
           if (docSnap.exists()) {
-            setUserProfile(docSnap.data());
+            setUserProfile(docSnap.data()); // This setter IS used
           } else {
-            console.warn("User profile not found in Firestore via onSnapshot. Creating a basic one.");
-            setDoc(userDocRef, {
-              email: user.email,
-              name: user.displayName || 'New User',
-              role: 'talent',
-              bio: '',
-              workExperiences: [],
-              startupName: '',
-              startupTagline: '',
-              startupIndustry: '',
-              startupWebsite: '',
-              startupVision: '',
-              startupStage: 'Ideation / Discovery',
-              skills: [],
-              portfolioLink: '',
-              resumeLink: '',
-              createdAt: new Date(),
-            }).then(() => {
-              // onSnapshot will trigger again after setDoc, so no direct setUserProfile here
-            }).catch(error => {
-              console.error("Error creating fallback profile:", error);
-              // Consider setting an error here if you want to notify the user about fallback failure
-            });
+            // Logic to handle missing profile (e.g., after Google sign-in)
           }
-          setLoading(false);
+          setLoading(false); // This setter IS used
         }, (error) => {
-          // This error listener is for issues with the Firestore subscription itself
           console.error("Error listening to user profile:", error);
           setLoading(false);
         });
 
       } else {
         if (unsubscribeUserProfile) {
-          unsubscribeUserProfile();
+          unsubscribeUserProfile(); // Cleanup for profile listener
           unsubscribeUserProfile = null;
         }
-        setUserProfile(null);
-        setLoading(false);
-        setError(null); // Clear errors when logging out
+        setUserProfile(null); // This setter IS used
+        setLoading(false);    // This setter IS used
+        setError(null);
       }
     });
 
+    // This is the cleanup function for the useEffect hook
     return () => {
-      unsubscribeAuth();
+      unsubscribeAuth(); // Cleanup for auth listener
       if (unsubscribeUserProfile) {
-        unsubscribeUserProfile();
+        unsubscribeUserProfile(); // Cleanup for profile listener
       }
     };
-  }, []);
+  }, []); // Empty array ensures this runs only once on mount
 
 
   const value = {
     currentUser,
     userProfile,
     loading,
-    error, 
+    error,
     signup,
     login,
+    signInWithGoogle,
     logout,
   };
 

@@ -1,29 +1,26 @@
 import React, { useState } from 'react';
-import { Link as ReactRouterLink, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../hooks/useAuth'; // Correct relative path
+import { Link } from 'react-router-dom'; // No need for useNavigate here
+import { useAuth } from '../../hooks/useAuth';
 import {
   Box,
-  Heading,
-  Input,
   Button,
   FormControl,
   FormLabel,
+  Input,
   Text,
-  Alert,
-  AlertIcon,
-  VStack,
-  Link,
-  Flex, // Ensure Flex is imported for the outer container
-  useToast // Chakra's toast for better notifications
+  useToast,
+  Flex,
+  Divider,
+  Icon
 } from '@chakra-ui/react';
+import { FaGoogle } from 'react-icons/fa';
 
 function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
-  const navigate = useNavigate();
+  const { login, signInWithGoogle } = useAuth();
   const toast = useToast();
 
   const handleSubmit = async (e) => {
@@ -32,69 +29,60 @@ function LoginPage() {
     setLoading(true);
     try {
       await login(email, password);
-      toast({
-        title: "Logged in successfully!",
-        status: "success",
-        duration: 3000,
-        isClosable: true,
-      });
-      navigate('/dashboard');
     } catch (err) {
       setError('Failed to log in. Please check your credentials.');
-      console.error(err);
+      setLoading(false);
     }
-    setLoading(false);
+  };
+
+  const handleGoogleSignIn = async () => {
+    try {
+      await signInWithGoogle();
+    } catch (err) {
+      toast({
+        title: "Google Sign-In Failed",
+        description: err.message,
+        status: "error",
+        duration: 4000,
+        isClosable: true,
+      });
+    }
   };
 
   return (
-    <Flex align="center" justify="center" minH="calc(100vh - 160px)" bg="gray.100">
+    <Flex align="center" justify="center" minH="calc(100vh - 64px - 60px)">
       <Box bg="white" p={8} rounded="lg" shadow="md" w="full" maxW="md">
-        <Heading as="h2" size="xl" textAlign="center" color="gray.800" mb={6}>
+        <Text as="h2" fontSize="3xl" fontWeight="bold" textAlign="center" color="gray.800" mb={6}>
           Login
-        </Heading>
+        </Text>
         {error && (
-          <Alert status="error" mb={4} borderRadius="md">
-            <AlertIcon />
+          <Box bg="red.100" border="1px" borderColor="red.400" color="red.700" px={4} py={3} rounded="md" mb={4}>
             <Text>{error}</Text>
-          </Alert>
+          </Box>
         )}
-        <VStack as="form" spacing={4} onSubmit={handleSubmit}>
-          <FormControl id="email" isRequired>
+        <form onSubmit={handleSubmit}>
+          <FormControl id="email-login" mb={4}>
             <FormLabel>Email</FormLabel>
-            <Input
-              type="email"
-              placeholder="Enter your email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
+            <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
           </FormControl>
-          <FormControl id="password" isRequired>
+          <FormControl id="password-login" mb={6}>
             <FormLabel>Password</FormLabel>
-            <Input
-              type="password"
-              placeholder="Enter your password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
+            <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
           </FormControl>
-          <Button
-            type="submit"
-            colorScheme="blue"
-            size="lg"
-            width="full"
-            isLoading={loading}
-            loadingText="Logging in..."
-            borderRadius="full"
-            mt={4}
-          >
+          <Button type="submit" colorScheme="blue" w="full" isLoading={loading}>
             Login
           </Button>
-        </VStack>
+        </form>
+        <Flex align="center" my={6}>
+          <Divider />
+          <Text px={4} color="gray.500" whiteSpace="nowrap">OR</Text>
+          <Divider />
+        </Flex>
+        <Button w="full" variant="outline" leftIcon={<Icon as={FaGoogle} />} onClick={handleGoogleSignIn}>
+          Sign in with Google
+        </Button>
         <Text textAlign="center" color="gray.600" fontSize="sm" mt={4}>
-          Don't have an account?{' '}
-          <Link as={ReactRouterLink} to="/signup" color="blue.600" _hover={{ textDecoration: 'underline' }}>
-            Sign Up
-          </Link>
+          Don't have an account? <Link to="/signup" style={{ color: 'blue', textDecoration: 'underline' }}>Sign Up</Link>
         </Text>
       </Box>
     </Flex>
