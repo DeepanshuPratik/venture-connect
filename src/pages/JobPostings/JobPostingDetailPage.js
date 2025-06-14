@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link as ReactRouterLink } from 'react-router-dom';
 import { db } from '../../firebase/firebase';
 import { doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuth } from '../../contexts/AuthContext';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import {
   Box,

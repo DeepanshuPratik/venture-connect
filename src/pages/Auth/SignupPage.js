@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom'; // No need for useNavigate here
-import { useAuth } from '../../hooks/useAuth';
-import {
+
+import { useAuth } from '../../contexts/AuthContext';import {
   Box,
   Button,
   FormControl,

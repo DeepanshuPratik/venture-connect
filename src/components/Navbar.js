@@ -1,6 +1,6 @@
 import React from "react";
 import { Link as ReactRouterLink, useNavigate } from "react-router-dom";
-import { useAuth } from "../hooks/useAuth";
+import { useAuth } from '../contexts/AuthContext';
 
 import {
   Box,

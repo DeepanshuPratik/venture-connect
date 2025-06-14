@@ -1,5 +1,4 @@
-// FIX: The entire file is corrected to use onSnapshot and satisfy the linter.
-import React, { createContext, useState, useEffect } from 'react'; // useContext is not needed here
+import React, { createContext, useContext, useState, useEffect } from 'react'; // useContext is now needed here
 import { auth, db } from '../firebase/firebase';
 import {
   createUserWithEmailAndPassword,
@@ -9,19 +8,28 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, onSnapshot, serverTimestamp } from 'firebase/firestore'; // onSnapshot is used
+import { doc, getDoc, setDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
 
+// 1. Create the context
 const AuthContext = createContext();
 
+// 2. Create the custom hook to use the context
+export const useAuth = () => {
+  return useContext(AuthContext);
+};
+
+// 3. Create the main context provider component
 export function AuthContextProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Email/Password Signup
   const signup = async (email, password, role, userName) => {
     setError(null);
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    // Create their user profile document in Firestore
     await setDoc(doc(db, 'users', userCredential.user.uid), {
       email: email,
       name: userName,
@@ -43,11 +51,13 @@ export function AuthContextProvider({ children }) {
     return userCredential;
   };
 
+  // Email/Password Login
   const login = (email, password) => {
     setError(null);
     return signInWithEmailAndPassword(auth, email, password);
   };
 
+  // Google Sign-In / Sign-Up
   const signInWithGoogle = async () => {
     setError(null);
     const provider = new GoogleAuthProvider();
@@ -86,30 +96,30 @@ export function AuthContextProvider({ children }) {
     }
   };
 
+  // Logout
   const logout = () => {
     setError(null);
     return signOut(auth);
   };
 
+  // Effect to manage auth state and real-time profile updates
   useEffect(() => {
-    let unsubscribeUserProfile = null; // Defined here to be accessible in cleanup
+    let unsubscribeUserProfile = null;
 
-    // onAuthStateChanged returns its own unsubscribe function
     const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
-      setCurrentUser(user); // This setter IS used
+      setCurrentUser(user);
       if (user) {
-        setLoading(true); // This setter IS used
+        setLoading(true);
         setError(null);
         const userDocRef = doc(db, 'users', user.uid);
 
-        // onSnapshot also returns its own unsubscribe function
         unsubscribeUserProfile = onSnapshot(userDocRef, (docSnap) => {
           if (docSnap.exists()) {
-            setUserProfile(docSnap.data()); // This setter IS used
+            setUserProfile({ id: docSnap.id, ...docSnap.data() });
           } else {
-            // Logic to handle missing profile (e.g., after Google sign-in)
+            console.warn("User profile not found in Firestore via onSnapshot.");
           }
-          setLoading(false); // This setter IS used
+          setLoading(false);
         }, (error) => {
           console.error("Error listening to user profile:", error);
           setLoading(false);
@@ -117,24 +127,22 @@ export function AuthContextProvider({ children }) {
 
       } else {
         if (unsubscribeUserProfile) {
-          unsubscribeUserProfile(); // Cleanup for profile listener
+          unsubscribeUserProfile();
           unsubscribeUserProfile = null;
         }
-        setUserProfile(null); // This setter IS used
-        setLoading(false);    // This setter IS used
+        setUserProfile(null);
+        setLoading(false);
         setError(null);
       }
     });
 
-    // This is the cleanup function for the useEffect hook
     return () => {
-      unsubscribeAuth(); // Cleanup for auth listener
+      unsubscribeAuth();
       if (unsubscribeUserProfile) {
-        unsubscribeUserProfile(); // Cleanup for profile listener
+        unsubscribeUserProfile();
       }
     };
-  }, []); // Empty array ensures this runs only once on mount
-
+  }, []);
 
   const value = {
     currentUser,
@@ -153,5 +161,3 @@ export function AuthContextProvider({ children }) {
     </AuthContext.Provider>
   );
 }
-
-export { AuthContext };

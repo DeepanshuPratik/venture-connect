@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../../hooks/useAuth';
-import LoadingSpinner from '../../components/LoadingSpinner';
+
+import { useAuth } from '../../contexts/AuthContext';import LoadingSpinner from '../../components/LoadingSpinner';
 import { db } from '../../firebase/firebase';
 import { collection, query, where, onSnapshot, doc, getDoc } from 'firebase/firestore';
 

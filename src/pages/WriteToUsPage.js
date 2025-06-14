@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion'; // Import AnimatePresence
 import { db } from '../firebase/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { useAuth } from '../hooks/useAuth'; // To get current user details
+import { useAuth } from '../contexts/AuthContext';
 import {
   Box,
   Heading,

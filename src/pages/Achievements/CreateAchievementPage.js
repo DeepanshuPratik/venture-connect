@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db } from '../../firebase/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { useAuth } from '../../hooks/useAuth';
-import {
+
+import { useAuth } from '../../contexts/AuthContext';import {
   Box,
   Heading,
   Input,
