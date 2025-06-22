@@ -195,7 +195,7 @@ function EditProfilePage() {
       jobTitle: '',
       startDate: '',
       endDate: '',
-      isCurrent: false,
+      isCurrent: true,
       description: ''
     });
     onOpen();
@@ -626,7 +626,7 @@ function EditProfilePage() {
               Cancel
             </Button>
             <Button colorScheme="blue" onClick={handleSaveExperience}>
-              Save
+              Add
             </Button>
           </ModalFooter>
         </ModalContent>
