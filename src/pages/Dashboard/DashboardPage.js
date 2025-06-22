@@ -1,9 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-
-import { useAuth } from '../../contexts/AuthContext';import LoadingSpinner from '../../components/LoadingSpinner';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
+import LoadingSpinner from '../../components/LoadingSpinner';
 import { db } from '../../firebase/firebase';
-import { collection, query, where, onSnapshot, doc, getDoc } from 'firebase/firestore';
+import {
+  collection,
+  query,
+  where,
+  onSnapshot,
+  doc,
+  getDoc,
+  deleteDoc,
+  orderBy
+} from 'firebase/firestore';
 
 import {
   Box,
@@ -25,182 +34,238 @@ import {
   ModalFooter,
   ModalBody,
   ModalCloseButton,
-  useDisclosure, // For modal control
+  useDisclosure,
   Avatar,
-  Link as ChakraLink
+  Link as ChakraLink,
+  useToast,
+  Divider,
 } from '@chakra-ui/react';
 
 function DashboardPage() {
-  const { currentUser, userProfile, loading } = useAuth();
-  const { isOpen, onOpen, onClose } = useDisclosure(); // Modal for interested talent
+  const { currentUser, userProfile, loading: authLoading } = useAuth();
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  const toast = useToast();
+  const navigate = useNavigate();
 
   const [myJobPostings, setMyJobPostings] = useState([]);
+  const [myAchievements, setMyAchievements] = useState([]);
   const [selectedJobForModal, setSelectedJobForModal] = useState(null);
   const [interestedTalentDetails, setInterestedTalentDetails] = useState([]);
   const [isFetchingInterestedDetails, setIsFetchingInterestedDetails] = useState(false);
-  const [jobPostsLoading, setJobPostsLoading] = useState(true);
-  const [jobPostsError, setJobPostsError] = useState(null);
+  
+  // Use separate loading states for each data type for robust UI
+  const [jobsLoading, setJobsLoading] = useState(true);
+  const [achievementsLoading, setAchievementsLoading] = useState(true);
 
-
+  // Effect to fetch all entrepreneur-specific data in real-time
   useEffect(() => {
-    // Only fetch job postings if user is an entrepreneur and is logged in
-    if (userProfile?.role === 'entrepreneur' && currentUser) {
-      const q = query(collection(db, 'job_posts'), where('postedBy', '==', currentUser.uid));
-
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-        const posts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setMyJobPostings(posts);
-        setJobPostsLoading(false);
-      }, (err) => {
-        console.error("Error fetching entrepreneur's job posts:", err);
-        setJobPostsError("Failed to load your job postings.");
-        setJobPostsLoading(false);
-      });
-
-      return () => unsubscribe(); // Cleanup listener on unmount
-    } else {
-      setJobPostsLoading(false); // Not an entrepreneur, or not logged in, so no jobs to load
+    // Guard clause: Only run if auth is done and user is a logged-in entrepreneur
+    if (authLoading || !currentUser || userProfile?.role !== 'entrepreneur') {
+      setJobsLoading(false);
+      setAchievementsLoading(false);
+      return;
     }
-  }, [userProfile, currentUser]); // Rerun if userProfile or currentUser changes
 
+    // --- Set up listener for Job Postings ---
+    const jobsQuery = query(
+      collection(db, 'job_posts'),
+      where('postedBy', '==', currentUser.uid),
+      orderBy('postedAt', 'desc')
+    );
+    const unsubscribeJobs = onSnapshot(jobsQuery, (snapshot) => {
+      setMyJobPostings(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      setJobsLoading(false);
+    }, (error) => {
+      console.error("Error fetching job postings:", error);
+      toast({ title: "Error", description: "Could not load job postings. Ensure Firestore index is created.", status: "error" });
+      setJobsLoading(false);
+    });
 
-  // Function to handle opening the modal and fetching interested talent details
+    // --- Set up listener for Achievement Posts ---
+    const achievementsQuery = query(
+      collection(db, 'achievements'),
+      where('postedBy', '==', currentUser.uid),
+      orderBy('postedAt', 'desc')
+    );
+    const unsubscribeAchievements = onSnapshot(achievementsQuery, (snapshot) => {
+      setMyAchievements(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      setAchievementsLoading(false);
+    }, (error) => {
+      console.error("Error fetching achievements:", error);
+      toast({ title: "Error", description: "Could not load achievements. Ensure Firestore index is created.", status: "error" });
+      setAchievementsLoading(false);
+    });
+
+    // Return a cleanup function to unsubscribe from both listeners when the component unmounts
+    return () => {
+      unsubscribeJobs();
+      unsubscribeAchievements();
+    };
+  }, [authLoading, currentUser, userProfile, toast]);
+
+  // Function to view interested talent in a modal
   const handleViewInterested = async (jobPost) => {
     setSelectedJobForModal(jobPost);
     setIsFetchingInterestedDetails(true);
-    setInterestedTalentDetails([]); // Clear previous details
+    setInterestedTalentDetails([]);
+    onOpen();
 
     try {
       if (jobPost.interestedUsers && jobPost.interestedUsers.length > 0) {
-        const talentPromises = jobPost.interestedUsers.map(async (uid) => {
-          const userDocRef = doc(db, 'users', uid);
-          const userDocSnap = await getDoc(userDocRef);
-          return userDocSnap.exists() ? { id: userDocSnap.id, ...userDocSnap.data() } : null;
-        });
-        const fetchedTalent = await Promise.all(talentPromises);
-        setInterestedTalentDetails(fetchedTalent.filter(Boolean)); // Filter out any nulls
+        const talentPromises = jobPost.interestedUsers.map(uid => getDoc(doc(db, 'users', uid)));
+        const userDocs = await Promise.all(talentPromises);
+        const fetchedTalent = userDocs
+          .filter(docSnap => docSnap.exists())
+          .map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
+        setInterestedTalentDetails(fetchedTalent);
       }
     } catch (err) {
       console.error("Error fetching interested talent details:", err);
-      // You might want to show a toast/alert here
+      toast({ title: "Error", description: "Could not fetch talent details.", status: "error" });
     } finally {
       setIsFetchingInterestedDetails(false);
-      onOpen(); // Open the modal after data is (or isn't) fetched
     }
   };
 
+  // Function to delete an achievement post
+  const handleDeleteAchievement = async (achievementId) => {
+    if (window.confirm("Are you sure you want to delete this achievement post? This action cannot be undone.")) {
+        try {
+            await deleteDoc(doc(db, "achievements", achievementId));
+            toast({
+                title: "Post Deleted",
+                description: "Your achievement post has been successfully deleted.",
+                status: "success",
+                duration: 3000,
+                isClosable: true,
+            });
+        } catch (error) {
+            console.error("Error deleting achievement: ", error);
+            toast({
+                title: "Error",
+                description: "Failed to delete the post. Please try again.",
+                status: "error",
+                duration: 4000,
+                isClosable: true,
+            });
+        }
+    }
+  };
 
-  if (loading || jobPostsLoading) {
+  // Main loading spinner for initial auth check
+  if (authLoading) {
     return <LoadingSpinner />;
   }
 
-  if (jobPostsError) {
-    return <Text color="red.600" textAlign="center" fontSize="lg" mt={8}>{jobPostsError}</Text>;
-  }
-
   return (
-    <Box maxW="container.xl" mx="auto" p={6} bg="white" rounded="lg" shadow="md">
-      <h1 className="text-4xl font-bold text-gray-800 mb-6">Welcome, {userProfile.name}!</h1>
+    <Box maxW="container.xl" mx="auto" px={6} py={8} bg="white" rounded="lg" shadow="md">
+      <Heading as="h1" size="2xl" mb={6}>Welcome, {userProfile?.name}!</Heading>
 
-      <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap={6} mb={8}>
-        {/* Quick Links / CTAs */}
-        <Box bg="blue.50" p={6} rounded="lg" shadow="sm" border="1px" borderColor="blue.200">
-          <Heading size="md" color="blue.700" mb={3}>Your Profile</Heading>
-          <Text color="gray.600" mb={4}>Keep your profile updated for better connections.</Text>
-          <Link to="/profile/edit">
-            <Button colorScheme="blue">Edit Profile</Button>
-          </Link>
-        </Box>
+      {/* --- Quick Links Section --- */}
+      <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap={6} mb={10}>
+        <Card bg="blue.50" variant="outline" borderColor="blue.200">
+          <CardHeader><Heading size="md" color="blue.700">Your Profile</Heading></CardHeader>
+          <CardBody>
+            <Text color="gray.600">Keep your profile updated for better connections.</Text>
+            <Button mt={4} colorScheme="blue" onClick={() => navigate('/profile')}>View My Profile</Button>
+          </CardBody>
+        </Card>
 
-        {userProfile.role === 'entrepreneur' ? (
+        {userProfile?.role === 'entrepreneur' ? (
           <>
-            <Box bg="green.50" p={6} rounded="lg" shadow="sm" border="1px" borderColor="green.200">
-              <Heading size="md" color="green.700" mb={3}>Post a Job</Heading>
-              <Text color="gray.600" mb={4}>Find the perfect talent for your startup.</Text>
-              <Link to="/jobs/new">
-                <Button colorScheme="green">Create Job Post</Button>
-              </Link>
-            </Box>
-            <Box bg="purple.50" p={6} rounded="lg" shadow="sm" border="1px" borderColor="purple.200">
-              <Heading size="md" color="purple.700" mb={3}>Share an Achievement</Heading>
-              <Text color="gray.600" mb={4}>Celebrate your startup's milestones with the community!</Text>
-              <Link to="/achievements/new">
-                <Button colorScheme="purple">Post Achievement</Button>
-              </Link>
-            </Box>
+            <Card bg="green.50" variant="outline" borderColor="green.200">
+              <CardHeader><Heading size="md" color="green.700">Post a Job</Heading></CardHeader>
+              <CardBody>
+                <Text color="gray.600">Find the perfect talent for your startup.</Text>
+                <Button mt={4} colorScheme="green" onClick={() => navigate('/jobs/new')}>Create Job Post</Button>
+              </CardBody>
+            </Card>
+            <Card bg="purple.50" variant="outline" borderColor="purple.200">
+              <CardHeader><Heading size="md" color="purple.700">Share an Achievement</Heading></CardHeader>
+              <CardBody>
+                <Text color="gray.600">Celebrate your startup's milestones.</Text>
+                <Button mt={4} colorScheme="purple" onClick={() => navigate('/achievements/new')}>Post Achievement</Button>
+              </CardBody>
+            </Card>
           </>
         ) : (
-          <Box bg="indigo.50" p={6} rounded="lg" shadow="sm" border="1px" borderColor="indigo.200">
-            <Heading size="md" color="indigo.700" mb={3}>Find Startup Jobs</Heading>
-            <Text color="gray.600" mb={4}>Explore exciting opportunities from innovative startups.</Text>
-            <Link to="/jobs">
-              <Button colorScheme="indigo">Browse Jobs</Button>
-            </Link>
-          </Box>
+          <Card bg="indigo.50" variant="outline" borderColor="indigo.200">
+            <CardHeader><Heading size="md" color="indigo.700">Find Startup Jobs</Heading></CardHeader>
+            <CardBody>
+              <Text color="gray.600">Explore exciting opportunities from innovative startups.</Text>
+              <Button mt={4} colorScheme="indigo" onClick={() => navigate('/jobs')}>Browse Jobs</Button>
+            </CardBody>
+          </Card>
         )}
-        <Box bg="yellow.50" p={6} rounded="lg" shadow="sm" border="1px" borderColor="yellow.200">
-          <Heading size="md" color="yellow.700" mb={3}>Community Updates</Heading>
-          <Text color="gray.600" mb={4}>See latest achievements and meetups.</Text>
-          <Link to="/community/feed">
-            <Button colorScheme="yellow">View Community Feed</Button>
-          </Link>
-        </Box>
       </SimpleGrid>
 
-      {/* --- Entrepreneur's Job Postings Tracking Section --- */}
-      {userProfile.role === 'entrepreneur' && (
-        <Box mt={10}>
-          <Heading as="h2" size="lg" mb={4}>My Job Postings</Heading>
-          {myJobPostings.length === 0 ? (
-            <Text color="gray.600">You haven't posted any jobs yet. <Link to="/jobs/new" style={{ color: 'blue.500', textDecoration: 'underline' }}>Post your first job!</Link></Text>
-          ) : (
-            <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6}>
-              {myJobPostings.map((job) => (
-                <Card key={job.id} bg="white" shadow="md" border="1px" borderColor="gray.200">
-                  <CardHeader pb={2}>
-                    <Heading size="md">{job.jobTitle}</Heading>
-                  </CardHeader>
-                  <CardBody pt={0}>
-                    <Text noOfLines={2} fontSize="sm" color="gray.600" mb={2}>{job.description}</Text>
-                    <HStack spacing={2} mb={4}>
-                      <Tag size="sm" colorScheme="blue">
-                        <Text as="span" fontWeight="bold">Interested: </Text> {job.interestedUsers?.length || 0}
-                      </Tag>
-                      {job.status && <Tag size="sm" colorScheme={job.status === 'open' ? 'green' : 'red'}>{job.status}</Tag>}
-                    </HStack>
-                    <Flex justify="space-between" align="center">
-                      <Link to={`/jobs/${job.id}`}>
-                        <Button size="sm" variant="outline" colorScheme="blue">View Details</Button>
-                      </Link>
-                      <Button
-                        size="sm"
-                        colorScheme="teal"
-                        onClick={() => handleViewInterested(job)}
-                        isLoading={selectedJobForModal?.id === job.id && isFetchingInterestedDetails}
-                        isDisabled={job.interestedUsers?.length === 0}
-                      >
-                        {job.interestedUsers?.length === 0 ? 'No Interests Yet' : 'View Interested Talent'}
-                      </Button>
-                    </Flex>
-                  </CardBody>
-                </Card>
-              ))}
-            </SimpleGrid>
-          )}
-        </Box>
+      {/* --- Entrepreneur's Actionable Dashboard Section --- */}
+      {userProfile?.role === 'entrepreneur' && (
+        <VStack spacing={10} align="stretch">
+          {/* My Job Postings Section */}
+          <Box>
+            <Heading as="h2" size="lg" mb={4}>My Job Postings</Heading>
+            {jobsLoading ? <LoadingSpinner /> : myJobPostings.length === 0 ? (
+              <Text color="gray.600">You haven't posted any jobs yet.</Text>
+            ) : (
+              <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6}>
+                {myJobPostings.map((job) => (
+                  <Card key={job.id} variant="outline" shadow="sm">
+                    <CardHeader pb={2}><Heading size="md" noOfLines={1}>{job.jobTitle}</Heading></CardHeader>
+                    <CardBody pt={0}>
+                      <HStack spacing={2} mb={4}>
+                        <Tag size="sm" colorScheme="blue">Interested: {job.interestedUsers?.length || 0}</Tag>
+                        {job.status && <Tag size="sm" colorScheme={job.status === 'open' ? 'green' : 'red'}>{job.status}</Tag>}
+                      </HStack>
+                      <Flex justify="space-between" align="center">
+                        <Button size="sm" colorScheme="teal" onClick={() => handleViewInterested(job)} isDisabled={!job.interestedUsers?.length}>View Interested</Button>
+                        <ChakraLink as={Link} to={`/jobs/${job.id}`}><Button size="sm" variant="ghost" colorScheme="gray">View Post</Button></ChakraLink>
+                      </Flex>
+                    </CardBody>
+                  </Card>
+                ))}
+              </SimpleGrid>
+            )}
+          </Box>
+
+          <Divider />
+
+          {/* My Achievements Section */}
+          <Box>
+            <Heading as="h2" size="lg" mb={4}>My Achievements</Heading>
+            {achievementsLoading ? <LoadingSpinner /> : myAchievements.length === 0 ? (
+              <Text color="gray.600">You haven't posted any achievements yet.</Text>
+            ) : (
+              <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6}>
+                {myAchievements.map((achievement) => (
+                  <Card key={achievement.id} variant="outline" shadow="sm">
+                    <CardHeader pb={2}><Heading size="md" noOfLines={1}>{achievement.title}</Heading></CardHeader>
+                    <CardBody pt={0}>
+                      <Text noOfLines={3} fontSize="sm" color="gray.600" mb={4} minH="60px">{achievement.description}</Text>
+                      <HStack justify="flex-end" spacing={2}>
+                        <Button onClick={() => handleDeleteAchievement(achievement.id)} size="sm" colorScheme="red" variant="ghost">Delete</Button>
+                        <ChakraLink as={Link} to={`/achievements/edit/${achievement.id}`}><Button size="sm" colorScheme="blue">Edit</Button></ChakraLink>
+                      </HStack>
+                    </CardBody>
+                  </Card>
+                ))}
+              </SimpleGrid>
+            )}
+          </Box>
+        </VStack>
       )}
 
       {/* Modal for Interested Talent */}
-      <Modal isOpen={isOpen} onClose={onClose} size="xl">
+      <Modal isOpen={isOpen} onClose={onClose} size="xl" scrollBehavior="inside">
         <ModalOverlay />
         <ModalContent>
           <ModalHeader>Interested Talent for "{selectedJobForModal?.jobTitle}"</ModalHeader>
           <ModalCloseButton />
           <ModalBody>
             {isFetchingInterestedDetails ? (
-              <LoadingSpinner />
+              <Flex justify="center" py={10}><LoadingSpinner /></Flex>
             ) : interestedTalentDetails.length === 0 ? (
-              <Text textAlign="center" py={4} color="gray.600">No talent has expressed interest in this job yet.</Text>
+              <Text textAlign="center" py={4} color="gray.600">No one has expressed interest yet.</Text>
             ) : (
               <VStack spacing={4} align="stretch">
                 {interestedTalentDetails.map((talent) => (
@@ -212,7 +277,7 @@ function DashboardPage() {
                         <Text fontSize="sm" color="gray.600">{talent.email}</Text>
                         {talent.skills && talent.skills.length > 0 && (
                           <HStack flexWrap="wrap" mt={1}>
-                            {talent.skills.map((skill, i) => (
+                            {talent.skills.slice(0, 3).map((skill, i) => (
                               <Tag key={i} size="sm" colorScheme="cyan">{skill}</Tag>
                             ))}
                           </HStack>

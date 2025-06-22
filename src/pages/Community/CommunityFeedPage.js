@@ -15,7 +15,8 @@ import {
   Tag,
   VStack,
   HStack,
-  Avatar, // For showing author's avatar
+  Avatar,
+  Divider, // Import Divider
 } from '@chakra-ui/react';
 
 function CommunityFeedPage() {
@@ -24,7 +25,6 @@ function CommunityFeedPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    // Fetch all achievement posts
     const q = query(collection(db, 'achievements'), orderBy('postedAt', 'desc'));
     const unsubscribe = onSnapshot(q, async (snapshot) => {
       const fetchedPosts = [];
@@ -32,7 +32,6 @@ function CommunityFeedPage() {
         const data = docSnapshot.data();
         let authorName = 'Unknown User';
         let authorRole = '';
-        // Fetch author's name and role from 'users' collection
         if (data.postedBy) {
           const userDocRef = doc(db, 'users', data.postedBy);
           const userDocSnap = await getDoc(userDocRef);
@@ -47,7 +46,7 @@ function CommunityFeedPage() {
           ...data,
           authorName,
           authorRole,
-          postedAt: data.postedAt?.toDate().toLocaleDateString(), // Format date
+          postedAt: data.postedAt?.toDate().toLocaleDateString(),
         });
       }
       setPosts(fetchedPosts);
@@ -69,6 +68,10 @@ function CommunityFeedPage() {
     return <Text color="red.600" textAlign="center" fontSize="lg" mt={8}>{error}</Text>;
   }
 
+  const isVideo = (url) => {
+    return url && url.match(/\.(mp4|webm|ogg)$/i);
+  };
+
   return (
     <Box maxW="container.xl" mx="auto" p={6} bg="white" rounded="lg" shadow="md">
       <Heading as="h1" size="xl" color="gray.800" mb={6} textAlign="center">
@@ -86,7 +89,7 @@ function CommunityFeedPage() {
             <Card key={post.id} bg="gray.50" shadow="sm" border="1px" borderColor="gray.200">
               <CardHeader pb={2}>
                 <Flex align="center" gap={3}>
-                  <Avatar name={post.authorName} size="md" /> {/* Author Avatar */}
+                  <Avatar name={post.authorName} size="md" />
                   <VStack align="flex-start" spacing={0}>
                     <Heading size="md" color="gray.800">{post.title}</Heading>
                     <Text fontSize="sm" color="gray.600">
@@ -97,10 +100,33 @@ function CommunityFeedPage() {
                 </Flex>
               </CardHeader>
               <CardBody pt={0}>
-                {post.imageUrl && (
-                  <Image src={post.imageUrl} alt={post.title} objectFit="cover" borderRadius="md" mb={4} maxH="200px" w="full" />
-                )}
                 <Text noOfLines={4} color="gray.700" lineHeight="tall">{post.description}</Text>
+                
+                {/* --- MEDIA MOVED TO THE BOTTOM OF THE CARD BODY --- */}
+                {post.mediaUrl && (
+                  <Box mt={4} pt={4} borderTop="1px" borderColor="gray.200">
+                    {isVideo(post.mediaUrl) ? (
+                      <video
+                        src={post.mediaUrl}
+                        controls
+                        style={{
+                          width: '100%',
+                          maxHeight: '300px', // Allow more height for videos
+                          borderRadius: 'var(--chakra-radii-md)',
+                        }}
+                      />
+                    ) : (
+                      <Image
+                        src={post.mediaUrl}
+                        alt={post.title}
+                        objectFit="cover"
+                        borderRadius="md"
+                        h="200px"
+                        w="full"
+                      />
+                    )}
+                  </Box>
+                )}
               </CardBody>
             </Card>
           ))}

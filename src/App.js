@@ -19,6 +19,7 @@ import AchievementsListPage from './pages/Achievements/AchievementsListPage';
 import CreateAchievementPage from './pages/Achievements/CreateAchievementPage';
 import NotFoundPage from './pages/NotFoundPage';
 import LandingIntroPage from './pages/LandingIntroPage';
+import EditAchievementPage from './pages/Achievements/EditAchievementPage';
 
 import CommunityPage from './pages/Community/CommunityPage';
 import CommunityFeedPage from './pages/Community/CommunityFeedPage';
@@ -127,7 +128,7 @@ function App() {
 
             <Route path="/achievements" element={<ProtectedRoute><AchievementsListPage /></ProtectedRoute>} />
             <Route path="/achievements/new" element={<ProtectedRoute allowedRoles={['entrepreneur']}><CreateAchievementPage /></ProtectedRoute>} />
-
+            <Route path="/achievements/edit/:id" element={<ProtectedRoute allowedRoles={['entrepreneur']}><EditAchievementPage /></ProtectedRoute>} />
             <Route path="/community" element={<ProtectedRoute><CommunityPage /></ProtectedRoute>} />
             <Route path="/community/feed" element={<ProtectedRoute><CommunityFeedPage /></ProtectedRoute>} />
             <Route path="/community/entrepreneurs" element={<ProtectedRoute><EntrepreneurSearchPage /></ProtectedRoute>} />
