@@ -53,6 +53,7 @@ import {
   FaUsers,
   FaCheckCircle,
   FaTimesCircle,
+  FaUserSlash
 } from "react-icons/fa";
 
 function DashboardPage() {
@@ -62,7 +63,6 @@ function DashboardPage() {
   const navigate = useNavigate();
 
   const [myJobPostings, setMyJobPostings] = useState([]);
-  const [activeMenuId, setActiveMenuId] = useState(null);
   const [myAchievements, setMyAchievements] = useState([]);
   const [selectedJobForModal, setSelectedJobForModal] = useState(null);
   const [interestedTalentDetails, setInterestedTalentDetails] = useState([]);
@@ -134,33 +134,26 @@ function DashboardPage() {
     };
   }, [authLoading, currentUser, userProfile, toast]);
 
-  const handleViewInterested = async (jobPost) => {
+  const handleViewInterested = (jobPost) => {
     setSelectedJobForModal(jobPost);
-    setIsFetchingInterestedDetails(true);
-    setInterestedTalentDetails([]);
-    onOpen();
+    setInterestedTalentDetails([]); // Clear previous state
 
-    try {
-      if (jobPost.interestedUsers && jobPost.interestedUsers.length > 0) {
-        const talentPromises = jobPost.interestedUsers.map((uid) =>
-          getDoc(doc(db, "users", uid))
-        );
-        const userDocs = await Promise.all(talentPromises);
-        const fetchedTalent = userDocs
-          .filter((docSnap) => docSnap.exists())
-          .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
-        setInterestedTalentDetails(fetchedTalent);
-      }
-    } catch (err) {
-      console.error("Error fetching interested talent details:", err);
-      toast({
-        title: "Error",
-        description: "Could not fetch talent details.",
-        status: "error",
-      });
-    } finally {
-      setIsFetchingInterestedDetails(false);
+    // The logic is now much simpler: if the interestStatus map exists, process it.
+    if (
+      jobPost.interestStatus &&
+      Object.keys(jobPost.interestStatus).length > 0
+    ) {
+      // Convert the map of users into an array of objects for easy rendering.
+      // This will include users with 'interested' and 'withdrawn' statuses.
+      const talentArray = Object.entries(jobPost.interestStatus).map(
+        ([uid, data]) => ({
+          id: uid,
+          ...data, // This includes { status, timestamp, userName, userEmail }
+        })
+      );
+      setInterestedTalentDetails(talentArray);
     }
+    onOpen(); // Open the modal
   };
 
   const handleToggleJobStatus = async (jobId, currentStatus) => {
@@ -170,7 +163,6 @@ function DashboardPage() {
       await updateDoc(docRef, { status: newStatus });
       toast({
         title: `Job ${newStatus}`,
-        description: `The job post has been successfully ${newStatus}.`,
         status: "success",
         duration: 3000,
         isClosable: true,
@@ -311,7 +303,6 @@ function DashboardPage() {
             <LoadingSpinner />
           ) : (
             <>
-              {/* --- ENHANCED "My Job Postings" Section --- */}
               <Box>
                 <Heading as="h2" size="lg" mb={4}>
                   My Job Postings
@@ -320,162 +311,168 @@ function DashboardPage() {
                   <Text color="gray.600">You haven't posted any jobs yet.</Text>
                 ) : (
                   <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={8}>
-                    {myJobPostings.map((job) => (
-                      <Card
-                        key={job.id}
-                        variant="outline"
-                        bg="white"
-                        shadow="lg"
-                        borderRadius="xl"
-                        transition="all 0.3s ease-in-out"
-                        _hover={{
-                          transform: "translateY(-5px)",
-                          shadow: "2xl",
-                        }}
-                        display="flex"
-                        flexDirection="column"
-                        // --- Z-INDEX FIX ---
-                        // Give the card a relative position and a higher z-index when its menu is active
-                        position="relative"
-                        zIndex={activeMenuId === job.id ? 20 : "auto"}
-                      >
-                        <CardHeader
-                          pb={2}
-                          borderBottom="1px"
-                          borderColor="gray.100"
-                        >
-                          <Flex justify="space-between" align="start">
-                            <Heading
-                              size="md"
-                              noOfLines={2}
-                              color="gray.700"
-                              fontWeight="bold"
-                            >
-                              {job.jobTitle}
-                            </Heading>
-                            <Menu
-                              // --- Z-INDEX FIX ---
-                              // Update the activeMenuId state when this menu opens or closes
-                              onOpen={() => setActiveMenuId(job.id)}
-                              onClose={() => setActiveMenuId(null)}
-                            >
-                              <MenuButton
-                                as={IconButton}
-                                aria-label="Options"
-                                icon={<BsThreeDotsVertical />}
-                                variant="ghost"
-                                size="sm"
-                                color="gray.500"
-                              />
-                              <MenuList>
-                                <MenuItem
-                                  onClick={() => handleViewInterested(job)}
-                                  isDisabled={!job.interestedUsers?.length}
-                                >
-                                  View Interested
-                                </MenuItem>
-                                <MenuItem
-                                  onClick={() =>
-                                    navigate(`/jobs/edit/${job.id}`)
-                                  }
-                                >
-                                  Edit Posting
-                                </MenuItem>
-                                <MenuItem
-                                  onClick={() =>
-                                    handleToggleJobStatus(job.id, job.status)
-                                  }
-                                >
-                                  {job.status === "open"
-                                    ? "Close Posting"
-                                    : "Re-open Posting"}
-                                </MenuItem>
-                                <MenuItem as={Link} to={`/jobs/${job.id}`}>
-                                  View Public Page
-                                </MenuItem>
-                              </MenuList>
-                            </Menu>
-                          </Flex>
-                        </CardHeader>
-
-                        <CardBody
+                    {myJobPostings.map((job) => {
+                      const interestStatusMap = job.interestStatus || {};
+                      const interestCount = Object.values(interestStatusMap).filter(s => s.status === 'interested').length;
+                      const withdrawnCount = Object.values(interestStatusMap).filter(s => s.status === 'withdrawn').length;
+                      const totalApplicants = Object.keys(interestStatusMap).length;
+                      return (
+                        <Card
+                          key={job.id}
+                          variant="outline"
+                          bg="white"
+                          shadow="lg"
+                          borderRadius="xl"
+                          transition="all 0.3s ease-in-out"
+                          _hover={{
+                            transform: "translateY(-5px)",
+                            shadow: "2xl",
+                          }}
                           display="flex"
                           flexDirection="column"
-                          flexGrow="1"
-                          p={4}
                         >
-                          <VStack spacing={4} align="stretch" flexGrow="1">
-                            <HStack>
-                              <Tag
-                                size="lg"
-                                colorScheme="blue"
-                                borderRadius="full"
-                                px={3}
-                              >
-                                <Icon as={FaUsers} mr={2} />
-                                <Text fontWeight="bold">
-                                  {job.interestedUsers?.length || 0}
-                                </Text>
-                                <Text ml={1}>Interested</Text>
-                              </Tag>
-                            </HStack>
-
-                            <Text
-                              fontSize="sm"
-                              color="gray.500"
-                              fontStyle="italic"
-                            >
-                              Created:{" "}
-                              {job.postedAt?.toDate().toLocaleDateString()}
-                            </Text>
-                          </VStack>
-
-                          <Flex
-                            mt={4}
-                            pt={4}
-                            borderTop="1px"
+                          <CardHeader
+                            pb={2}
+                            borderBottom="1px"
                             borderColor="gray.100"
-                            justify="space-between"
-                            align="center"
                           >
-                            <Tag
-                              size="md"
-                              colorScheme={
-                                job.status === "open" ? "green" : "red"
-                              }
-                              variant="subtle"
-                              borderRadius="full"
+                            <Flex justify="space-between" align="start">
+                              <Heading
+                                size="md"
+                                noOfLines={2}
+                                color="gray.700"
+                                fontWeight="bold"
+                              >
+                                {job.jobTitle}
+                              </Heading>
+                              <Menu>
+                                <MenuButton
+                                  as={IconButton}
+                                  aria-label="Options"
+                                  icon={<BsThreeDotsVertical />}
+                                  variant="ghost"
+                                  size="sm"
+                                  color="gray.500"
+                                />
+                                <MenuList>
+                                  <MenuItem
+                                    onClick={() => handleViewInterested(job)}
+                                    isDisabled={!interestCount}
+                                  >
+                                    View Interested
+                                  </MenuItem>
+                                  <MenuItem
+                                    onClick={() =>
+                                      navigate(`/jobs/edit/${job.id}`)
+                                    }
+                                  >
+                                    Edit Posting
+                                  </MenuItem>
+                                  <MenuItem
+                                    onClick={() =>
+                                      handleToggleJobStatus(job.id, job.status)
+                                    }
+                                  >
+                                    {job.status === "open"
+                                      ? "Close Posting"
+                                      : "Re-open Posting"}
+                                  </MenuItem>
+                                  <MenuItem as={Link} to={`/jobs/${job.id}`}>
+                                    View Public Page
+                                  </MenuItem>
+                                </MenuList>
+                              </Menu>
+                            </Flex>
+                          </CardHeader>
+                          <CardBody
+                            display="flex"
+                            flexDirection="column"
+                            flexGrow="1"
+                            p={4}
+                          >
+                            <VStack spacing={4} align="stretch" flexGrow="1">
+                              <HStack>
+                                <Tag
+                                  size="lg"
+                                  colorScheme="blue"
+                                  borderRadius="full"
+                                  px={3}
+                                >
+                                  <Icon as={FaUsers} mr={2} />
+                                  <Text fontWeight="bold">{interestCount}</Text>
+                                  <Text ml={1}>Interested</Text>
+                                </Tag>
+                                {/* NEW: Display withdrawn count */}
+                                {withdrawnCount > 0 && (
+                                  <Tag
+                                    size="lg"
+                                    colorScheme="red"
+                                    borderRadius="full"
+                                    px={3}
+                                  >
+                                    <Icon as={FaUserSlash} mr={2} />
+                                    <Text fontWeight="bold">
+                                      {withdrawnCount}
+                                    </Text>
+                                    <Text ml={1}>Withdrawn</Text>
+                                  </Tag>
+                                )}
+                              </HStack>
+                              <Text
+                                fontSize="sm"
+                                color="gray.500"
+                                fontStyle="italic"
+                              >
+                                Created:{" "}
+                                {job.postedAt?.toDate().toLocaleDateString()}
+                              </Text>
+                            </VStack>
+                            <Flex
+                              mt={4}
+                              pt={4}
+                              borderTop="1px"
+                              borderColor="gray.100"
+                              justify="space-between"
+                              align="center"
                             >
-                              <Icon
-                                as={
-                                  job.status === "open"
-                                    ? FaCheckCircle
-                                    : FaTimesCircle
+                              <Tag
+                                size="md"
+                                colorScheme={
+                                  job.status === "open" ? "green" : "red"
                                 }
-                                mr={2}
-                              />
-                              {job.status === "open" ? "Active" : "Closed"}
-                            </Tag>
-                            <Button
-                              size="sm"
-                              colorScheme="blue"
-                              variant="solid"
-                              onClick={() => handleViewInterested(job)}
-                              isDisabled={!job.interestedUsers?.length}
-                            >
-                              View Applicants
-                            </Button>
-                          </Flex>
-                        </CardBody>
-                      </Card>
-                    ))}
+                                variant="subtle"
+                                borderRadius="full"
+                              >
+                                <Icon
+                                  as={
+                                    job.status === "open"
+                                      ? FaCheckCircle
+                                      : FaTimesCircle
+                                  }
+                                  mr={2}
+                                />
+                                {job.status === "open" ? "Active" : "Closed"}
+                              </Tag>
+                              <Button
+                                size="sm"
+                                colorScheme="blue"
+                                variant="solid"
+                                onClick={() => handleViewInterested(job)}
+                                isDisabled={!interestCount && !withdrawnCount}
+                              >
+                                View Applicants
+                              </Button>
+                            </Flex>
+                          </CardBody>
+                        </Card>
+                      );
+                    })}
                   </SimpleGrid>
                 )}
               </Box>
 
               <Divider />
 
-              {/* My Achievements Section */}
               <Box>
                 <Heading as="h2" size="lg" mb={4}>
                   My Achievements
@@ -487,17 +484,7 @@ function DashboardPage() {
                 ) : (
                   <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6}>
                     {myAchievements.map((achievement) => (
-                      <Card
-                        key={achievement.id}
-                        variant="outline"
-                        shadow="lg"
-                        borderRadius="xl"
-                        transition="all 0.3s ease-in-out"
-                        _hover={{
-                          transform: "translateY(-5px)",
-                          shadow: "2xl",
-                        }}
-                      >
+                      <Card key={achievement.id} variant="outline" shadow="sm">
                         <CardHeader pb={2}>
                           <Heading size="md" noOfLines={1}>
                             {achievement.title}
@@ -544,7 +531,6 @@ function DashboardPage() {
         </VStack>
       )}
 
-      {/* --- ENHANCED MODAL --- */}
       <Modal
         isOpen={isOpen}
         onClose={onClose}
@@ -555,28 +541,18 @@ function DashboardPage() {
         <ModalOverlay bg="blackAlpha.600" backdropFilter="blur(5px)" />
         <ModalContent>
           <ModalHeader pb={2}>
-            <Heading size="lg">Interested Talent</Heading>
-            <Text fontSize="md" color="gray.500" fontWeight="normal">
-              For "{selectedJobForModal?.jobTitle}"
-            </Text>
+            <Heading size="lg">
+              Applicants for "{selectedJobForModal?.jobTitle}"
+            </Heading>
           </ModalHeader>
           <ModalCloseButton />
           <ModalBody
-            minH={
-              isFetchingInterestedDetails ||
-              interestedTalentDetails.length === 0
-                ? "200px"
-                : "auto"
-            }
+            minH={interestedTalentDetails.length === 0 ? "200px" : "auto"}
             maxH="70vh"
             overflowY="auto"
             px={0}
           >
-            {isFetchingInterestedDetails ? (
-              <Flex justify="center" align="center" h="200px">
-                <LoadingSpinner />
-              </Flex>
-            ) : interestedTalentDetails.length === 0 ? (
+            {interestedTalentDetails.length === 0 ? (
               <Flex
                 justify="center"
                 align="center"
@@ -586,66 +562,59 @@ function DashboardPage() {
               >
                 <Icon as={FaUserGraduate} boxSize={12} color="gray.400" />
                 <Text textAlign="center" color="gray.600">
-                  No one has expressed interest yet.
+                  No one has expressed or withdrawn interest yet.
                 </Text>
               </Flex>
             ) : (
               <VStack spacing={0} align="stretch" divider={<Divider />}>
-                {interestedTalentDetails.map((talent) => (
-                  <Flex
-                    key={talent.id}
-                    p={4}
-                    align="center"
-                    justify="space-between"
-                    transition="background 0.2s ease-in-out"
-                    _hover={{ bg: "gray.50" }}
-                  >
-                    <HStack spacing={4} align="start">
-                      <Avatar name={talent.name} size="lg" />
-                      <VStack align="flex-start" spacing={1}>
-                        <HStack align="center">
-                          <Text fontSize="lg" fontWeight="bold">
-                            {talent.name}
-                          </Text>
-                          <Tag size="sm" colorScheme="blue" variant="subtle">
-                            <Icon as={FaUserGraduate} mr={1} />
-                            Talent
-                          </Tag>
-                        </HStack>
-
-                        {talent.bio && (
-                          <Text fontSize="sm" color="gray.600" noOfLines={2}>
-                            {talent.bio}
-                          </Text>
-                        )}
-
-                        {talent.skills && talent.skills.length > 0 && (
-                          <HStack flexWrap="wrap" mt={2}>
-                            {talent.skills.slice(0, 4).map((skill, i) => (
-                              <Tag
-                                key={i}
-                                size="sm"
-                                colorScheme="cyan"
-                                variant="solid"
-                              >
-                                {skill}
-                              </Tag>
-                            ))}
-                          </HStack>
-                        )}
-                      </VStack>
-                    </HStack>
-                    <ChakraLink
-                      as={Link}
-                      to={`/profile/${talent.id}`}
-                      _hover={{ textDecoration: "none" }}
+                {interestedTalentDetails
+                  .sort((a, b) => (a.status === "interested" ? -1 : 1)) // Sorts to show 'interested' first
+                  .map((talent) => (
+                    <Flex
+                      key={talent.id}
+                      p={4}
+                      align="center"
+                      justify="space-between"
+                      transition="background 0.2s ease-in-out"
+                      _hover={{ bg: "gray.50" }}
+                      opacity={talent.status === "withdrawn" ? 0.6 : 1}
+                      bg={
+                        talent.status === "withdrawn" ? "red.50" : "transparent"
+                      }
                     >
-                      <Button size="sm" colorScheme="blue">
-                        View Full Profile
-                      </Button>
-                    </ChakraLink>
-                  </Flex>
-                ))}
+                      <HStack spacing={4} align="start">
+                        <Avatar name={talent.userName} size="lg" />
+                        <VStack align="flex-start" spacing={1}>
+                          <HStack align="center">
+                            <Text fontSize="lg" fontWeight="bold">
+                              {talent.userName}
+                            </Text>
+                            <Tag
+                              size="sm"
+                              colorScheme={
+                                talent.status === "interested" ? "green" : "red"
+                              }
+                              variant="subtle"
+                            >
+                              {talent.status}
+                            </Tag>
+                          </HStack>
+                          <Text fontSize="sm" color="gray.600">
+                            {talent.userEmail}
+                          </Text>
+                        </VStack>
+                      </HStack>
+                      <ChakraLink
+                        as={Link}
+                        to={`/profile/${talent.id}`}
+                        _hover={{ textDecoration: "none" }}
+                      >
+                        <Button size="sm" colorScheme="blue">
+                          View Profile
+                        </Button>
+                      </ChakraLink>
+                    </Flex>
+                  ))}
               </VStack>
             )}
           </ModalBody>
