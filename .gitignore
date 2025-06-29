@@ -1,5 +1,6 @@
 ## dependencies
 /node_modules
+/*/node_modules
 /.pnp
 .pnp-debug.log
 
@@ -8,6 +9,9 @@
 
 # production
 /build
+
+# uploads
+/*/uploads
 
 # misc
 .DS_Store

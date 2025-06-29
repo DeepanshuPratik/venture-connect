@@ -1,0 +1,11 @@
+{
+  "files": {
+    "main.js": "/static/js/main.f429f496.js",
+    "static/media/logo_vc2.png": "/static/media/logo_vc2.084f0bcba96ceff931a0.png",
+    "index.html": "/index.html",
+    "main.f429f496.js.map": "/static/js/main.f429f496.js.map"
+  },
+  "entrypoints": [
+    "static/js/main.f429f496.js"
+  ]
+}
