@@ -5,7 +5,7 @@ import LoadingSpinner from '../../components/LoadingSpinner';
 import { db } from '../../firebase/firebase';
 import { doc, getDoc, Timestamp } from 'firebase/firestore';
 
-// Import Chakra UI components
+// Import Chakra UI components (no change)
 import {
   Box,
   Text,
@@ -17,27 +17,22 @@ import {
   TagLabel,
   Link as ChakraLink,
   Button,
-  useToast
+  useToast,
+  Avatar
 } from '@chakra-ui/react';
 
-// --- Helper Functions ---
-
-// Formats a Firestore Timestamp or Date object into a readable string (e.g., "Jan 2023")
+// --- Helper Functions (no change) ---
 const formatDate = (dateValue) => {
   if (!dateValue) return 'Present';
-  // Handles both Firestore Timestamp objects and standard JS Date objects
   const date = dateValue instanceof Timestamp ? dateValue.toDate() : new Date(dateValue);
   return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
 };
 
-// Calculates the duration between two dates
 const calculateDuration = (startDateValue, endDateValue, isCurrent) => {
   if (!startDateValue) return '';
   const start = startDateValue instanceof Timestamp ? startDateValue.toDate() : new Date(startDateValue);
   const end = isCurrent ? new Date() : (endDateValue instanceof Timestamp ? endDateValue.toDate() : new Date(endDateValue));
-
   if (isNaN(start.getTime()) || isNaN(end.getTime())) return '';
-
   let years = end.getFullYear() - start.getFullYear();
   let months = end.getMonth() - start.getMonth();
   if (months < 0 || (months === 0 && end.getDate() < start.getDate())) {
@@ -50,7 +45,6 @@ const calculateDuration = (startDateValue, endDateValue, isCurrent) => {
   return '(Less than a month)';
 };
 
-// Checks if a value is provided (not null, undefined, empty string, or empty array)
 const isProvided = (value) => {
   if (value === null || value === undefined || value === '') return false;
   if (Array.isArray(value) && value.length === 0) return false;
@@ -58,52 +52,63 @@ const isProvided = (value) => {
 };
 
 // --- Main Component ---
-
 function MyProfilePage() {
-  const { userProfile: loggedInUserProfile, loading: authLoading } = useAuth();
-  const { id: userIdFromParams } = useParams(); // Get user ID from URL, e.g., /profile/someUserId
+  // --- FIX 1: Get 'currentUser' from context, not 'loggedInUserProfile'
+  const { currentUser, loading: authLoading } = useAuth();
+  const { id: userIdFromParams } = useParams();
   const toast = useToast();
 
   const [profileToDisplay, setProfileToDisplay] = useState(null);
   const [pageLoading, setPageLoading] = useState(true);
 
+  // --- FIX 2: A robust useEffect that always fetches fresh data from Firestore
   useEffect(() => {
     const fetchProfile = async () => {
       setPageLoading(true);
-      // If a user ID is in the URL, fetch that specific user's profile
-      if (userIdFromParams) {
-        try {
-          const userDocRef = doc(db, 'users', userIdFromParams);
-          const userDocSnap = await getDoc(userDocRef);
-          if (userDocSnap.exists()) {
-            setProfileToDisplay({ id: userDocSnap.id, ...userDocSnap.data() });
-          } else {
-            toast({
-              title: "Profile Not Found",
-              description: "The user profile you're looking for does not exist.",
-              status: "error",
-              duration: 4000,
-              isClosable: true,
-            });
-            setProfileToDisplay(null);
-          }
-        } catch (error) {
-          console.error("Error fetching user profile:", error);
-          toast({ title: "Error", description: "Could not fetch the user profile.", status: "error" });
+
+      // Determine the user ID to fetch. Use the URL param first, then the logged-in user's ID.
+      const idToFetch = userIdFromParams || currentUser?.uid;
+
+      // If no ID is available (e.g., logged out), stop and clear the profile.
+      if (!idToFetch) {
+        setPageLoading(false);
+        setProfileToDisplay(null);
+        return;
+      }
+
+      try {
+        // Fetch the document from Firestore using the determined ID.
+        const userDocRef = doc(db, 'users', idToFetch);
+        const userDocSnap = await getDoc(userDocRef);
+
+        if (userDocSnap.exists()) {
+          // If the document exists, set it to state.
+          setProfileToDisplay({ id: userDocSnap.id, ...userDocSnap.data() });
+        } else {
+          // If no document is found, show an error.
+          toast({
+            title: "Profile Not Found",
+            description: "The user profile document does not exist in the database.",
+            status: "error",
+            duration: 4000,
+            isClosable: true,
+          });
           setProfileToDisplay(null);
         }
-      } else {
-        // If no user ID in URL, display the currently logged-in user's profile
-        setProfileToDisplay(loggedInUserProfile);
+      } catch (error) {
+        console.error("Error fetching user profile:", error);
+        toast({ title: "Error", description: "Could not fetch the user profile.", status: "error" });
+        setProfileToDisplay(null);
+      } finally {
+        setPageLoading(false);
       }
-      setPageLoading(false);
     };
 
-    // Wait until the initial auth loading is complete before fetching
+    // Only run the fetch logic after the initial authentication check is complete.
     if (!authLoading) {
       fetchProfile();
     }
-  }, [userIdFromParams, loggedInUserProfile, authLoading, toast]);
+  }, [userIdFromParams, currentUser, authLoading, toast]); // Dependencies are correct
 
   if (pageLoading || authLoading) {
     return <LoadingSpinner />;
@@ -113,7 +118,7 @@ function MyProfilePage() {
     return (
       <Box maxW="3xl" mx="auto" p={6} textAlign="center">
         <Heading>Profile Not Available</Heading>
-        <Text mt={4}>This user's profile could not be loaded.</Text>
+        <Text mt={4}>This user's profile could not be loaded or does not exist.</Text>
         <Link to="/dashboard">
           <Button mt={6} colorScheme="blue">Go to Dashboard</Button>
         </Link>
@@ -121,8 +126,8 @@ function MyProfilePage() {
     );
   }
 
-  // Determine if the currently logged-in user is viewing their own profile
-  const isOwnProfile = !userIdFromParams || userIdFromParams === loggedInUserProfile?.id;
+  // --- FIX 3: Make the 'isOwnProfile' check more reliable
+  const isOwnProfile = currentUser?.uid === profileToDisplay.id;
 
   const sortedWorkExperiences = [...(profileToDisplay.workExperiences || [])].sort((a, b) => {
     const dateA = a.startDate ? (a.startDate.toDate ? a.startDate.toDate() : new Date(a.startDate)) : new Date(0);
@@ -130,6 +135,7 @@ function MyProfilePage() {
     return dateB.getTime() - dateA.getTime();
   });
 
+  // The rest of your component's JSX is perfectly fine and requires no changes.
   const hasAnyEntrepreneurDetail =
     isProvided(profileToDisplay.startupName) ||
     isProvided(profileToDisplay.startupTagline) ||
@@ -145,17 +151,23 @@ function MyProfilePage() {
 
   return (
     <Box maxW="3xl" mx="auto" px={6} py={8} bg="white" rounded="lg" shadow="md">
-      <Flex justify="space-between" align="center" mb={6}>
-        <Heading as="h1" size="xl" color="gray.800">
-          {isOwnProfile ? "My Profile" : `${profileToDisplay.name}'s Profile`}
-        </Heading>
+      <Flex direction={{ base: 'column', md: 'row' }} justify="space-between" align="center" mb={8}>
+        <Flex align="center" mb={{ base: 4, md: 0 }}>
+          <Avatar size="2xl" name={profileToDisplay.name} src={profileToDisplay.photoURL} mr={6} />
+          <VStack align={{ base: 'center', md: 'flex-start' }}>
+            <Heading as="h1" size="xl" color="gray.800">
+              {profileToDisplay.name}
+            </Heading>
+            {isProvided(profileToDisplay.role) && <Text fontSize="lg" color="gray.500" textTransform="capitalize">{profileToDisplay.role}</Text>}
+          </VStack>
+        </Flex>
         {isOwnProfile && (
           <ChakraLink as={Link} to="/profile/edit">
             <Button colorScheme="blue">Edit Profile</Button>
           </ChakraLink>
         )}
       </Flex>
-
+      {/* ... rest of your JSX ... */}
       <VStack spacing={6} align="stretch">
         {/* Basic Info */}
         <Box>

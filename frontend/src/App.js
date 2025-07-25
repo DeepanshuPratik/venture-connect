@@ -16,7 +16,6 @@ import JobPostingsListPage from './pages/JobPostings/JobPostingsListPage';
 import CreateJobPostingPage from './pages/JobPostings/CreateJobPostingPage';
 import JobPostingDetailPage from './pages/JobPostings/JobPostingDetailPage';
 import EditJobPostingPage from './pages/JobPostings/EditJobPostingPage';
-import AchievementsListPage from './pages/Achievements/AchievementsListPage';
 import CreateAchievementPage from './pages/Achievements/CreateAchievementPage';
 import NotFoundPage from './pages/NotFoundPage';
 import LandingIntroPage from './pages/LandingIntroPage';
@@ -128,7 +127,6 @@ function App() {
             <Route path="/jobs/:id" element={<ProtectedRoute><JobPostingDetailPage /></ProtectedRoute>} />
             <Route path="/jobs/edit/:id" element={<ProtectedRoute allowedRoles={['entrepreneur']}><EditJobPostingPage /></ProtectedRoute>} />
 
-            <Route path="/achievements" element={<ProtectedRoute><AchievementsListPage /></ProtectedRoute>} />
             <Route path="/achievements/new" element={<ProtectedRoute allowedRoles={['entrepreneur']}><CreateAchievementPage /></ProtectedRoute>} />
             <Route path="/achievements/edit/:id" element={<ProtectedRoute allowedRoles={['entrepreneur']}><EditAchievementPage /></ProtectedRoute>} />
             <Route path="/community" element={<ProtectedRoute><CommunityPage /></ProtectedRoute>} />
