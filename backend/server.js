@@ -7,11 +7,22 @@ const cors = require('cors');
 const app = express();
 const PORT = process.env.PORT || 8000;
 
-// --- Explicit CORS Configuration ---
+const allowedOrigins = [
+  'http://localhost:3000', // Your local React dev server
+  'https://venture-connect.deepanshupratik.in' // Your deployed frontend
+];
+
 const corsOptions = {
-  // Allow requests only from your React app's origin
-  origin: 'http://localhost:3000',
-  optionsSuccessStatus: 200 // For older browsers
+  origin: function (origin, callback) {
+    // allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
+  optionsSuccessStatus: 200
 };
 
 app.use(cors(corsOptions)); // Use the explicit options
@@ -43,6 +54,21 @@ app.post('/upload', upload.single('media'), (req, res) => {
   res.status(200).send({
     message: 'File uploaded successfully!',
     mediaUrl: fileUrl,
+  });
+});
+
+app.post('/upload-avatar', upload.single('avatar'), (req, res) => {
+  if (!req.file) {
+    return res.status(400).send({ message: 'Please upload a file.' });
+  }
+
+  // Construct the full URL for the uploaded file
+  const fileUrl = `${process.env.SERVER_BASE_URL || `http://localhost:${PORT}`}/uploads/${req.file.filename}`;
+
+  // Send the URL back to the React client
+  res.status(200).send({
+    message: 'Avatar uploaded successfully!',
+    photoURL: fileUrl,
   });
 });
 
